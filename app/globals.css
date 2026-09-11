@@ -2,14 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --cf-bg: 13 15 18;
+  --cf-card: 22 26 34;
+  --cf-border: 35 41 54;
+  --cf-text: 241 245 249;
+  --cf-text-muted: 148 163 184;
+  --cf-accent: 56 189 248;
+}
+
 html,
 body {
-  background-color: #0d0f12;
+  background-color: rgb(var(--cf-bg));
+}
+
+body {
+  padding-bottom: 4.5rem;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #232936 #0d0f12;
+  scrollbar-color: rgb(var(--cf-border)) rgb(var(--cf-bg));
 }
 
 *::-webkit-scrollbar {
@@ -18,10 +31,32 @@ body {
 }
 
 *::-webkit-scrollbar-track {
-  background: #0d0f12;
+  background: rgb(var(--cf-bg));
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #232936;
+  background-color: rgb(var(--cf-border));
   border-radius: 8px;
+}
+
+.optic-horizon {
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--cf-bg)) 0%,
+    rgb(var(--cf-accent) / 0.08) 45%,
+    rgb(var(--cf-accent) / 0.18) 50%,
+    rgb(var(--cf-accent) / 0.08) 55%,
+    rgb(var(--cf-bg)) 100%
+  );
+  animation: optic-breathe 8s ease-in-out infinite;
+}
+
+@keyframes optic-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }

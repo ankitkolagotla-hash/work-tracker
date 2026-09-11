@@ -8,10 +8,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#0D0F12',
-        obsidian: '#161A22',
-        border: '#232936',
-        accent: '#38BDF8',
+        'cf-bg': 'rgb(var(--cf-bg) / <alpha-value>)',
+        'cf-card': 'rgb(var(--cf-card) / <alpha-value>)',
+        'cf-border': 'rgb(var(--cf-border) / <alpha-value>)',
+        'cf-text': 'rgb(var(--cf-text) / <alpha-value>)',
+        'cf-text-muted': 'rgb(var(--cf-text-muted) / <alpha-value>)',
+        'cf-accent': 'rgb(var(--cf-accent) / <alpha-value>)',
       },
       fontFamily: {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],

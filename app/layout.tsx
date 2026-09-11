@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ThemeProvider } from '../components/ThemeProvider';
+import { FocusTicker } from '../components/FocusTicker';
+import { AudioFocusHub } from '../components/AudioFocusHub';
+import { OpticFlowRest } from '../components/OpticFlowRest';
 
 export const metadata: Metadata = {
   title: 'ChronoFlow OS',
@@ -13,7 +17,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0D0F12] text-slate-100 antialiased">{children}</body>
+      <body className="bg-cf-bg text-cf-text antialiased">
+        <ThemeProvider>
+          <FocusTicker />
+          {children}
+          <AudioFocusHub />
+          <OpticFlowRest />
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

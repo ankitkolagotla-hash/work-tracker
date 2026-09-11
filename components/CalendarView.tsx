@@ -32,10 +32,11 @@ function formatClock(h: number, m: number): string {
   return `${hh}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
-function buildDailyBlocks(cycles: number): DailyBlock[] {
+/** Visual timeline from after school to shutdown: 3:30 PM through 9:30 PM, 50/10 cycles. */
+function buildDailyBlocks(startHour: number, startMinute: number, cycles: number): DailyBlock[] {
   const blocks: DailyBlock[] = [];
-  let hour = 8;
-  let minute = 0;
+  let hour = startHour;
+  let minute = startMinute;
   for (let i = 0; i < cycles; i++) {
     const startLabel = formatClock(hour, minute);
     let endMinute = minute + 50;
@@ -55,7 +56,7 @@ function buildDailyBlocks(cycles: number): DailyBlock[] {
   return blocks;
 }
 
-const DAILY_BLOCKS = buildDailyBlocks(8);
+const DAILY_BLOCKS = buildDailyBlocks(15, 30, 6);
 
 export const CalendarView: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -64,21 +65,21 @@ export const CalendarView: React.FC = () => {
   const { assessments, studyLogs, verifiedBlocks, toggleBlockVerified } = useAssessmentStore();
 
   return (
-    <div className="bg-[#161A22] border border-[#232936] rounded-xl p-6 text-slate-200">
+    <div className="bg-cf-card border border-cf-border rounded-xl p-6 text-cf-text">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-cyan-400" /> Study Calendar
+          <h2 className="text-lg font-bold text-cf-text flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-cf-accent" /> Study Calendar
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">System date: {BASELINE_LABEL}</p>
+          <p className="text-xs text-cf-text-muted mt-0.5">System date: {BASELINE_LABEL}</p>
         </div>
-        <div className="flex items-center gap-1 bg-[#0D0F12] border border-[#232936] rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-cf-bg border border-cf-border rounded-lg p-1">
           {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md capitalize transition ${
-                viewMode === mode ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'
+                viewMode === mode ? 'bg-cf-accent text-black' : 'text-cf-text-muted hover:text-cf-text'
               }`}
             >
               {mode}
@@ -118,11 +119,15 @@ function DailyView({
   const todaysAssessments = assessments.filter((a) => toDateOnly(a.dueDate) === BASELINE_DATE_STR);
   const upcoming = assessments.filter((a) => a.status !== 'Completed');
   const focusBlocks = DAILY_BLOCKS.filter((b) => b.type === 'focus');
+  const verifiedFocusCount = focusBlocks.filter((b) => verifiedBlocks.includes(`${BASELINE_DATE_STR}::${b.id}`)).length;
 
   return (
     <div>
-      <p className="text-sm text-white font-semibold mb-1">{formatFullDate(BASELINE_DATE_STR)}</p>
-      <p className="text-xs text-slate-500 mb-4">50 / 10 focus-block timeline for today.</p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+        <p className="text-sm text-cf-text font-semibold">{formatFullDate(BASELINE_DATE_STR)}</p>
+        <span className="text-xs text-cf-text-muted font-mono">{verifiedFocusCount} / {focusBlocks.length} verified</span>
+      </div>
+      <p className="text-xs text-cf-text-muted mb-4">After-school to shutdown timeline — 50/10 focus blocks.</p>
 
       {todaysAssessments.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -142,7 +147,7 @@ function DailyView({
       )}
 
       <div className="space-y-2">
-        {DAILY_BLOCKS.map((block, i) => {
+        {DAILY_BLOCKS.map((block) => {
           const key = `${BASELINE_DATE_STR}::${block.id}`;
           const verified = verifiedBlocks.includes(key);
           const sprintAssessment =
@@ -153,7 +158,7 @@ function DailyView({
 
           if (block.type === 'break') {
             return (
-              <div key={block.id} className="flex items-center gap-3 pl-4 py-1 text-[11px] text-slate-600">
+              <div key={block.id} className="flex items-center gap-3 pl-4 py-1 text-[11px] text-cf-text-muted">
                 <span className="w-24 font-mono">{block.startLabel}</span>
                 <span>10-min break</span>
               </div>
@@ -163,18 +168,19 @@ function DailyView({
           return (
             <label
               key={block.id}
-              className="flex items-center gap-3 bg-[#0D0F12] border border-[#232936] rounded-lg px-4 py-2.5 cursor-pointer hover:border-slate-600 transition"
+              className="flex items-center gap-3 bg-cf-bg border border-cf-border rounded-lg px-4 py-2.5 cursor-pointer hover:border-slate-600 transition"
             >
               <input
                 type="checkbox"
                 checked={verified}
                 onChange={() => onToggle(key)}
-                className="w-4 h-4 accent-cyan-500"
+                className="w-4 h-4"
+                style={{ accentColor: 'rgb(var(--cf-accent))' }}
               />
-              <span className="w-28 text-xs font-mono text-slate-400">
+              <span className="w-28 text-xs font-mono text-cf-text-muted">
                 {block.startLabel} – {block.endLabel}
               </span>
-              <span className={`text-sm ${verified ? 'text-slate-500 line-through' : 'text-white'}`}>
+              <span className={`text-sm ${verified ? 'text-cf-text-muted line-through' : 'text-cf-text'}`}>
                 {sprintAssessment ? `Focus Sprint — ${sprintAssessment.title}` : 'Open Focus Block'}
               </span>
               {course && (
@@ -213,12 +219,12 @@ function WeeklyView({ assessments, studyLogs }: { assessments: Assessment[]; stu
           return (
             <div
               key={day}
-              className={`bg-[#0D0F12] border rounded-lg p-3 min-h-[120px] flex flex-col ${
-                isToday ? 'border-cyan-500' : 'border-[#232936]'
+              className={`bg-cf-bg border rounded-lg p-3 min-h-[120px] flex flex-col ${
+                isToday ? 'border-cf-accent' : 'border-cf-border'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-xs font-semibold ${isToday ? 'text-cyan-400' : 'text-slate-300'}`}>
+                <span className={`text-xs font-semibold ${isToday ? 'text-cf-accent' : 'text-cf-text'}`}>
                   {formatDayLabel(day)}
                 </span>
                 {studiedToday && <span className="w-2 h-2 rounded-full bg-orange-400" title="Study streak day" />}
@@ -237,7 +243,7 @@ function WeeklyView({ assessments, studyLogs }: { assessments: Assessment[]; stu
                     </div>
                   );
                 })}
-                {dueToday.length === 0 && <span className="text-[10px] text-slate-600">No deadlines</span>}
+                {dueToday.length === 0 && <span className="text-[10px] text-cf-text-muted">No deadlines</span>}
               </div>
             </div>
           );
@@ -245,14 +251,14 @@ function WeeklyView({ assessments, studyLogs }: { assessments: Assessment[]; stu
       </div>
 
       {upcomingBeyondWeek.length > 0 && (
-        <div className="bg-[#0D0F12] border border-[#232936] rounded-lg p-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Next Up After This Week</h4>
+        <div className="bg-cf-bg border border-cf-border rounded-lg p-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-cf-text-muted mb-2">Next Up After This Week</h4>
           <div className="space-y-1.5">
             {upcomingBeyondWeek.map((a) => {
               const course = courseFor(a.courseId);
               return (
                 <div key={a.id} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-200">{a.title}</span>
+                  <span className="text-cf-text">{a.title}</span>
                   <span style={{ color: course?.color }}>{formatShortDate(toDateOnly(a.dueDate))}</span>
                 </div>
               );
@@ -279,12 +285,12 @@ function MonthlyView({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-white">{MONTH_NAMES[monthIndex]} 2026</h3>
-        <div className="flex items-center gap-1 bg-[#0D0F12] border border-[#232936] rounded-lg p-1">
+        <h3 className="text-sm font-bold text-cf-text">{MONTH_NAMES[monthIndex]} 2026</h3>
+        <div className="flex items-center gap-1 bg-cf-bg border border-cf-border rounded-lg p-1">
           <button
             onClick={() => setMonthIndex(8)}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
-              monthIndex === 8 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'
+              monthIndex === 8 ? 'bg-cf-accent text-black' : 'text-cf-text-muted hover:text-cf-text'
             }`}
           >
             September
@@ -292,7 +298,7 @@ function MonthlyView({
           <button
             onClick={() => setMonthIndex(9)}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
-              monthIndex === 9 ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'
+              monthIndex === 9 ? 'bg-cf-accent text-black' : 'text-cf-text-muted hover:text-cf-text'
             }`}
           >
             October
@@ -302,7 +308,7 @@ function MonthlyView({
 
       <div className="grid grid-cols-7 gap-1.5 mb-2">
         {weekdayLabels.map((w) => (
-          <div key={w} className="text-center text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+          <div key={w} className="text-center text-[10px] uppercase tracking-wider text-cf-text-muted font-semibold">
             {w}
           </div>
         ))}
@@ -319,11 +325,11 @@ function MonthlyView({
           return (
             <div
               key={i}
-              className={`min-h-[80px] bg-[#0D0F12] border rounded-lg p-1.5 flex flex-col gap-1 ${
-                isToday ? 'border-cyan-500 ring-1 ring-cyan-500/50' : 'border-[#232936]'
+              className={`min-h-[80px] bg-cf-bg border rounded-lg p-1.5 flex flex-col gap-1 ${
+                isToday ? 'border-cf-accent ring-1 ring-cf-accent/50' : 'border-cf-border'
               }`}
             >
-              <span className={`text-[11px] font-mono ${isToday ? 'text-cyan-400 font-bold' : 'text-slate-400'}`}>
+              <span className={`text-[11px] font-mono ${isToday ? 'text-cf-accent font-bold' : 'text-cf-text-muted'}`}>
                 {Number(cell.dateStr.slice(8, 10))}
               </span>
               {act && (
@@ -349,7 +355,7 @@ function MonthlyView({
         })}
       </div>
 
-      <div className="flex items-center gap-4 mt-4 text-[10px] text-slate-500">
+      <div className="flex items-center gap-4 mt-4 text-[10px] text-cf-text-muted">
         <span className="flex items-center gap-1">
           <CalendarRange className="w-3 h-3" /> Course milestone
         </span>

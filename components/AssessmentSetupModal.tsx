@@ -41,7 +41,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-[#161A22] border border-[#232936] w-full max-w-xl rounded-xl p-6 text-slate-200 shadow-2xl">
+      <div className="bg-cf-card border border-cf-border w-full max-w-xl rounded-xl p-6 text-slate-200 shadow-2xl">
         <h3 className="text-lg font-bold text-white mb-4">Add Assessment &amp; Ingest Study Packet</h3>
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -50,7 +50,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
-                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                className="w-full bg-cf-bg border border-cf-border rounded px-3 py-2 text-sm text-white focus:outline-cf-accent"
               >
                 {REGISTERED_COURSES.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -62,7 +62,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as AssessmentType)}
-                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                className="w-full bg-cf-bg border border-cf-border rounded px-3 py-2 text-sm text-white focus:outline-cf-accent"
               >
                 <option value="Quiz">Quiz</option>
                 <option value="Test">Test</option>
@@ -80,7 +80,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
                 placeholder="e.g., Unit 1 Science of Biology Quiz"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                className="w-full bg-cf-bg border border-cf-border rounded px-3 py-2 text-sm text-white focus:outline-cf-accent"
                 required
               />
             </div>
@@ -90,7 +90,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
                 type="datetime-local"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                className="w-full bg-cf-bg border border-cf-border rounded px-3 py-2 text-sm text-white focus:outline-cf-accent"
                 required
               />
             </div>
@@ -103,7 +103,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
                 type="number"
                 value={points}
                 onChange={(e) => setPoints(Number(e.target.value))}
-                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                className="w-full bg-cf-bg border border-cf-border rounded px-3 py-2 text-sm text-white focus:outline-cf-accent"
                 min={0}
               />
             </div>
@@ -111,14 +111,14 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
 
           <div>
             <label className="text-xs text-slate-400 block mb-1">
-              Dump Notes / Flashcards (Format: <code className="text-cyan-400">Term: Definition</code> or <code className="text-cyan-400">Prompt - Answer</code>)
+              Dump Notes / Flashcards (Format: <code className="text-cf-accent">Term: Definition</code> or <code className="text-cf-accent">Prompt - Answer</code>)
             </label>
             <textarea
               rows={7}
               value={rawNotes}
               onChange={(e) => setRawNotes(e.target.value)}
               placeholder={'Attention: Selective allocation of cognitive processing\nEmergent Property: Novel characteristic from system interactions'}
-              className="w-full bg-[#0D0F12] border border-[#232936] rounded p-3 text-xs font-mono text-slate-200 resize-none focus:outline-cyan-500"
+              className="w-full bg-cf-bg border border-cf-border rounded p-3 text-xs font-mono text-slate-200 resize-none focus:outline-cf-accent"
             />
 
             {rawNotes.trim().length > 0 && (
@@ -143,7 +143,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
             <button
               type="submit"
               disabled={!canSubmit}
-              className="px-5 py-2 text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-black rounded transition"
+              className="px-5 py-2 text-sm font-semibold bg-cf-accent hover:opacity-90 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-black rounded transition"
             >
               Ingest &amp; Generate Recall Cards
             </button>
