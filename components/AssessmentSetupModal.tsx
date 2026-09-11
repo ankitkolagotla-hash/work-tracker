@@ -1,0 +1,127 @@
+'use client';
+import React, { useState } from 'react';
+import { useAssessmentStore } from '../store/useAssessmentStore';
+import { REGISTERED_COURSES, AssessmentType } from '../types/assessment';
+
+export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+  const { addAssessment } = useAssessmentStore();
+  const [title, setTitle] = useState('');
+  const [courseId, setCourseId] = useState(REGISTERED_COURSES[5].id);
+  const [type, setType] = useState<AssessmentType>('Quiz');
+  const [dueDate, setDueDate] = useState('');
+  const [points, setPoints] = useState(35);
+  const [rawNotes, setRawNotes] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    addAssessment({
+      title,
+      type,
+      courseId,
+      unitsCovered: ['Direct Notes Ingest'],
+      dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
+      status: 'Upcoming',
+      points: Number(points),
+      pastedMaterials: rawNotes,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-[#161A22] border border-[#232936] w-full max-w-xl rounded-xl p-6 text-slate-200 shadow-2xl">
+        <h3 className="text-lg font-bold text-white mb-4">Add Assessment &amp; Ingest Study Packet</h3>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Target Course</label>
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+              >
+                {REGISTERED_COURSES.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Assessment Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as AssessmentType)}
+                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+              >
+                <option value="Quiz">Quiz</option>
+                <option value="Test">Test</option>
+                <option value="Exam">Exam</option>
+                <option value="Assignment">Assignment</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Title</label>
+              <input
+                type="text"
+                placeholder="e.g., Unit 1 Science of Biology Quiz"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Target Due Date</label>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Points</label>
+              <input
+                type="number"
+                value={points}
+                onChange={(e) => setPoints(Number(e.target.value))}
+                className="w-full bg-[#0D0F12] border border-[#232936] rounded px-3 py-2 text-sm text-white focus:outline-cyan-500"
+                min={0}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">
+              Dump Notes / Flashcards (Format: <code className="text-cyan-400">Term: Definition</code> or <code className="text-cyan-400">Prompt - Answer</code>)
+            </label>
+            <textarea
+              rows={7}
+              value={rawNotes}
+              onChange={(e) => setRawNotes(e.target.value)}
+              placeholder={'Attention: Selective allocation of cognitive processing\nEmergent Property: Novel characteristic from system interactions'}
+              className="w-full bg-[#0D0F12] border border-[#232936] rounded p-3 text-xs font-mono text-slate-200 resize-none focus:outline-cyan-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-400 hover:text-white">
+              Cancel
+            </button>
+            <button type="submit" className="px-5 py-2 text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black rounded transition">
+              Ingest &amp; Generate Recall Cards
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
