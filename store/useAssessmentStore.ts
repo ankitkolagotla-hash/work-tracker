@@ -1,6 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Assessment, StudySessionLog, DrillCard, REGISTERED_COURSES } from '../types/assessment';
+import {
+  Assessment,
+  StudySessionLog,
+  PrepStage,
+  PREP_STAGES,
+  StudyMethod,
+  REGISTERED_COURSES,
+} from '../types/assessment';
+import { parseDrillLines } from '../lib/notes';
+
+const STAGE_METHOD_MAP: Partial<Record<PrepStage, StudyMethod>> = {
+  review: 'Active Recall Prompt',
+  diagnostic: 'Diagnostic Quiz',
+  mastery: 'Case Study Mock',
+};
 
 interface AssessmentState {
   assessments: Assessment[];
@@ -11,14 +25,20 @@ interface AssessmentState {
     isRunning: boolean;
   };
   canvasFeedUrl: string;
+  verifiedBlocks: string[];
 
-  addAssessment: (data: Omit<Assessment, 'id' | 'readinessIndex' | 'generatedDrills'>) => void;
+  addAssessment: (
+    data: Omit<Assessment, 'id' | 'readinessIndex' | 'generatedDrills' | 'completedStages'>
+  ) => void;
   importCanvasEvents: (events: Assessment[]) => void;
   parseMaterialsToDrills: (assessmentId: string, rawText: string) => void;
+  appendMaterials: (assessmentId: string, additionalText: string) => void;
   startStudySession: (assessmentId: string) => void;
   tickTimer: () => void;
-  stopStudySession: (performanceScore: number, method: StudySessionLog['methodUsed']) => void;
+  completeStage: (assessmentId: string, stage: PrepStage, performanceScore?: number) => void;
+  cancelSession: () => void;
   deleteAssessment: (id: string) => void;
+  toggleBlockVerified: (key: string) => void;
 }
 
 export const useAssessmentStore = create<AssessmentState>()(
@@ -26,6 +46,9 @@ export const useAssessmentStore = create<AssessmentState>()(
     (set, get) => ({
       canvasFeedUrl:
         'https://issaquah.instructure.com/feeds/calendars/user_QeloAEpfBFMRDzKfi2PNj6w6C236vTQofVfALMl0.ics',
+
+      // Fresh baseline: Thursday, September 10, 2026. No historical completions —
+      // every assessment starts at 0% readiness with no prep stages completed.
       assessments: [
         {
           id: 'init-bio-1',
@@ -34,9 +57,9 @@ export const useAssessmentStore = create<AssessmentState>()(
           courseId: 'ib-bio',
           unitsCovered: ['Mechanisms of Learning', 'Emergence', 'Taxonomy'],
           dueDate: '2026-09-14T09:00:00.000Z',
-          status: 'Studying',
+          status: 'Upcoming',
           points: 35,
-          readinessIndex: 65,
+          readinessIndex: 0,
           pastedMaterials: `Attention: The conscious bottleneck limiting stimuli into working memory
 Encoding: Transferring working memory to long-term storage via schemas
 Emergent Property: Novel characteristics arising strictly from component interactions
@@ -49,25 +72,16 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
             { id: 'd4', prompt: 'Morphological Species Concept', answer: 'Linnaeus definition of species based on physical form' },
             { id: 'd5', prompt: 'Taxonomic Hierarchy', answer: 'Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species' },
           ],
+          completedStages: [],
         },
       ],
-      studyLogs: [
-        {
-          id: 'log-1',
-          assessmentId: 'init-bio-1',
-          courseId: 'ib-bio',
-          timestamp: '2026-09-10T20:00:00.000Z',
-          durationMinutes: 50,
-          methodUsed: 'Active Recall Prompt',
-          performanceScore: 85,
-          summarySnippet: 'Science of Biology Unit Quiz (IB Biology)',
-        },
-      ],
+      studyLogs: [],
       activeSession: {
         assessmentId: null,
         elapsedSeconds: 0,
         isRunning: false,
       },
+      verifiedBlocks: [],
 
       addAssessment: (data) => {
         const newId = `asym-${Date.now()}`;
@@ -76,6 +90,7 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           id: newId,
           readinessIndex: 0,
           generatedDrills: [],
+          completedStages: [],
         };
         set((state) => ({ assessments: [newAssessment, ...state.assessments] }));
         get().parseMaterialsToDrills(newId, data.pastedMaterials);
@@ -84,30 +99,32 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
       importCanvasEvents: (incomingEvents) => {
         set((state) => {
           const existingTitles = new Set(state.assessments.map((a) => a.title));
-          const uniqueNew = incomingEvents.filter((e) => !existingTitles.has(e.title));
+          const uniqueNew = incomingEvents
+            .filter((e) => !existingTitles.has(e.title))
+            .map((e) => ({ ...e, readinessIndex: 0, completedStages: [] as PrepStage[] }));
           return { assessments: [...uniqueNew, ...state.assessments] };
         });
       },
 
       parseMaterialsToDrills: (assessmentId, rawText) => {
-        const lines = rawText.split('\n').filter((l) => l.trim().length > 0);
-        const drills: DrillCard[] = [];
-
-        lines.forEach((line, idx) => {
-          if (line.includes(':')) {
-            const [p, ...rest] = line.split(':');
-            drills.push({ id: `drill-${idx}`, prompt: p.trim(), answer: rest.join(':').trim() });
-          } else if (line.includes(' - ')) {
-            const [p, ...rest] = line.split(' - ');
-            drills.push({ id: `drill-${idx}`, prompt: p.trim(), answer: rest.join(' - ').trim() });
-          }
-        });
+        const drills = parseDrillLines(rawText).map((d, idx) => ({
+          id: `drill-${assessmentId}-${idx}`,
+          prompt: d.prompt,
+          answer: d.answer,
+        }));
 
         set((state) => ({
           assessments: state.assessments.map((a) =>
             a.id === assessmentId ? { ...a, generatedDrills: drills, pastedMaterials: rawText } : a
           ),
         }));
+      },
+
+      appendMaterials: (assessmentId, additionalText) => {
+        const target = get().assessments.find((a) => a.id === assessmentId);
+        if (!target) return;
+        const combined = `${target.pastedMaterials}\n${additionalText}`.trim();
+        get().parseMaterialsToDrills(assessmentId, combined);
       },
 
       startStudySession: (assessmentId) => {
@@ -129,39 +146,51 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
         }));
       },
 
-      stopStudySession: (performanceScore, method) => {
-        const { activeSession, assessments } = get();
-        if (!activeSession.assessmentId) return;
+      completeStage: (assessmentId, stage, performanceScore) => {
+        set((state) => {
+          const target = state.assessments.find((a) => a.id === assessmentId);
+          if (!target || target.completedStages.includes(stage)) return {};
 
-        const target = assessments.find((a) => a.id === activeSession.assessmentId);
-        if (!target) return;
+          const completedStages = [...target.completedStages, stage];
+          const readinessIndex = Math.min(100, completedStages.length * 25);
+          const allDone = completedStages.length === PREP_STAGES.length;
 
-        const sessionDurationMins = Math.max(1, Math.round(activeSession.elapsedSeconds / 60));
-        const course = REGISTERED_COURSES.find((c) => c.id === target.courseId);
+          const hadSession = state.activeSession.assessmentId === assessmentId;
+          let studyLogs = state.studyLogs;
 
-        const newLog: StudySessionLog = {
-          id: `log-${Date.now()}`,
-          assessmentId: target.id,
-          courseId: target.courseId,
-          timestamp: new Date().toISOString(),
-          durationMinutes: sessionDurationMins,
-          methodUsed: method,
-          performanceScore,
-          summarySnippet: `${target.title} (${course?.name})`,
-        };
+          if (stage !== 'intake' && hadSession) {
+            const course = REGISTERED_COURSES.find((c) => c.id === target.courseId);
+            const stageMeta = PREP_STAGES.find((s) => s.id === stage);
+            const newLog: StudySessionLog = {
+              id: `log-${Date.now()}`,
+              assessmentId,
+              courseId: target.courseId,
+              timestamp: new Date().toISOString(),
+              durationMinutes: Math.max(1, Math.round(state.activeSession.elapsedSeconds / 60)),
+              methodUsed: STAGE_METHOD_MAP[stage] ?? 'Active Recall Prompt',
+              performanceScore: performanceScore ?? 0,
+              summarySnippet: `${target.title} — ${stageMeta?.title ?? stage} (${course?.name ?? ''})`,
+            };
+            studyLogs = [newLog, ...state.studyLogs];
+          }
 
-        const updatedReadiness = Math.min(
-          100,
-          Math.round(target.readinessIndex * 0.5 + performanceScore * 0.5)
-        );
+          return {
+            assessments: state.assessments.map((a) =>
+              a.id === assessmentId
+                ? { ...a, completedStages, readinessIndex, status: allDone ? 'Completed' : 'Studying' }
+                : a
+            ),
+            studyLogs,
+            activeSession:
+              stage === 'intake' || !hadSession
+                ? state.activeSession
+                : { assessmentId: null, elapsedSeconds: 0, isRunning: false },
+          };
+        });
+      },
 
-        set((state) => ({
-          studyLogs: [newLog, ...state.studyLogs],
-          assessments: state.assessments.map((a) =>
-            a.id === target.id ? { ...a, readinessIndex: updatedReadiness, status: 'Studying' } : a
-          ),
-          activeSession: { assessmentId: null, elapsedSeconds: 0, isRunning: false },
-        }));
+      cancelSession: () => {
+        set({ activeSession: { assessmentId: null, elapsedSeconds: 0, isRunning: false } });
       },
 
       deleteAssessment: (id) => {
@@ -169,9 +198,18 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           assessments: state.assessments.filter((a) => a.id !== id),
         }));
       },
+
+      toggleBlockVerified: (key) => {
+        set((state) => ({
+          verifiedBlocks: state.verifiedBlocks.includes(key)
+            ? state.verifiedBlocks.filter((k) => k !== key)
+            : [...state.verifiedBlocks, key],
+        }));
+      },
     }),
     {
       name: 'chronoflow-store',
+      version: 2,
     }
   )
 );

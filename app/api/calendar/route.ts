@@ -47,6 +47,7 @@ export async function POST(req: Request) {
           points: 10,
           readinessIndex: 0,
           generatedDrills: [],
+          completedStages: [],
         });
       }
     }

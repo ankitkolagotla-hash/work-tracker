@@ -1,7 +1,9 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAssessmentStore } from '../store/useAssessmentStore';
 import { REGISTERED_COURSES, AssessmentType } from '../types/assessment';
+import { validateMaterials } from '../lib/notes';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { addAssessment } = useAssessmentStore();
@@ -12,10 +14,15 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
   const [points, setPoints] = useState(35);
   const [rawNotes, setRawNotes] = useState('');
 
+  const validation = useMemo(() => validateMaterials(rawNotes), [rawNotes]);
+
   if (!isOpen) return null;
+
+  const canSubmit = title.trim().length > 0 && dueDate.length > 0 && validation.valid;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSubmit) return;
     addAssessment({
       title,
       type,
@@ -26,6 +33,9 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
       points: Number(points),
       pastedMaterials: rawNotes,
     });
+    setTitle('');
+    setDueDate('');
+    setRawNotes('');
     onClose();
   };
 
@@ -110,13 +120,31 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
               placeholder={'Attention: Selective allocation of cognitive processing\nEmergent Property: Novel characteristic from system interactions'}
               className="w-full bg-[#0D0F12] border border-[#232936] rounded p-3 text-xs font-mono text-slate-200 resize-none focus:outline-cyan-500"
             />
+
+            {rawNotes.trim().length > 0 && (
+              validation.valid ? (
+                <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  {validation.conceptCount} structured concepts identified. Ready to encode prep modules.
+                </div>
+              ) : (
+                <div className="mt-2 flex items-start gap-2 text-xs text-amber-400 bg-amber-950/30 border border-amber-900/60 rounded p-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{validation.message}</span>
+                </div>
+              )
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-400 hover:text-white">
               Cancel
             </button>
-            <button type="submit" className="px-5 py-2 text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black rounded transition">
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="px-5 py-2 text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-black rounded transition"
+            >
               Ingest &amp; Generate Recall Cards
             </button>
           </div>
