@@ -5,7 +5,7 @@ import { REGISTERED_COURSES } from '../types/assessment';
 import { StudyStreakTracker } from '../components/StudyStreakTracker';
 import { AssessmentSetupModal } from '../components/AssessmentSetupModal';
 import { DashboardPasteModal } from '../components/DashboardPasteModal';
-import { MasteryWorkspace } from '../components/MasteryWorkspace';
+import { ActiveStudyWorkspace } from '../components/ActiveStudyWorkspace';
 import { CalendarView } from '../components/CalendarView';
 import { SprintLauncher } from '../components/SprintLauncher';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
@@ -41,7 +41,7 @@ export default function Home() {
   if (activeStudyId) {
     return (
       <main className="min-h-screen bg-cf-bg p-8">
-        <MasteryWorkspace assessmentId={activeStudyId} onExit={() => setActiveStudyId(null)} />
+        <ActiveStudyWorkspace assessmentId={activeStudyId} onExit={() => setActiveStudyId(null)} />
       </main>
     );
   }
@@ -179,7 +179,7 @@ function AssessmentCard({
       </div>
 
       <div className="mt-6 pt-3 border-t border-cf-border flex justify-between items-center">
-        <span className="text-xs text-slate-500 font-mono">{assessment.generatedDrills.length} cards</span>
+        <span className="text-xs text-slate-500 font-mono">{assessment.studyPack.flashcards.length} cards</span>
         <button
           onClick={() => onStudy(assessment.id)}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-cf-accent hover:text-black text-slate-200 text-xs font-semibold rounded transition"

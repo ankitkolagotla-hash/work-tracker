@@ -3,19 +3,13 @@ import { persist } from 'zustand/middleware';
 import {
   Assessment,
   StudySessionLog,
-  PrepStage,
-  PREP_STAGES,
   StudyMethod,
+  StudyPacing,
+  DayOfWeek,
   REGISTERED_COURSES,
 } from '../types/assessment';
-import { parseDrillLines } from '../lib/notes';
+import { generateStudyPack, EMPTY_STUDY_PACK } from '../lib/studyGenerator';
 import { isPast } from '../lib/date';
-
-const STAGE_METHOD_MAP: Partial<Record<PrepStage, StudyMethod>> = {
-  review: 'Active Recall Prompt',
-  diagnostic: 'Diagnostic Quiz',
-  mastery: 'Case Study Mock',
-};
 
 interface AssessmentState {
   assessments: Assessment[];
@@ -23,24 +17,35 @@ interface AssessmentState {
   activeSession: {
     assessmentId: string | null;
     elapsedSeconds: number;
+    lastLoggedSeconds: number;
     isRunning: boolean;
   };
   canvasFeedUrl: string;
   verifiedBlocks: string[];
 
-  addAssessment: (
-    data: Omit<Assessment, 'id' | 'readinessIndex' | 'generatedDrills' | 'completedStages'>
-  ) => void;
+  addAssessment: (data: Omit<Assessment, 'id' | 'readinessIndex' | 'studyPack'>) => void;
   importCanvasEvents: (events: Assessment[]) => void;
-  parseMaterialsToDrills: (assessmentId: string, rawText: string) => void;
+  regenerateStudyPack: (assessmentId: string, rawText: string) => void;
   appendMaterials: (assessmentId: string, additionalText: string) => void;
   startStudySession: (assessmentId: string) => void;
   tickTimer: () => void;
-  completeStage: (assessmentId: string, stage: PrepStage, performanceScore?: number) => void;
+  logStudySession: (assessmentId: string, method: StudyMethod, performanceScore: number) => void;
   cancelSession: () => void;
   deleteAssessment: (id: string) => void;
   toggleBlockVerified: (key: string) => void;
 }
+
+const DEFAULT_PLAN = {
+  totalPrepTimeMinutes: 60,
+  studySessionPacing: '25m Pomodoro' as StudyPacing,
+  targetStudyDays: [] as DayOfWeek[],
+};
+
+const BIO_QUIZ_MATERIALS = `Attention: The conscious bottleneck limiting stimuli into working memory
+Encoding: Transferring working memory to long-term storage via schemas
+Emergent Property: Novel characteristics arising strictly from component interactions
+Morphological Species Concept: Linnaeus definition of species based on physical form
+Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species`;
 
 export const useAssessmentStore = create<AssessmentState>()(
   persist(
@@ -49,8 +54,8 @@ export const useAssessmentStore = create<AssessmentState>()(
         'https://issaquah.instructure.com/feeds/calendars/user_QeloAEpfBFMRDzKfi2PNj6w6C236vTQofVfALMl0.ics',
 
       // Fresh baseline: Friday, September 11, 2026. No historical completions —
-      // every assessment starts at 0% readiness with no prep stages completed.
-      // This is the user's real active schedule, not mock data.
+      // every assessment starts at 0% readiness. This is the user's real active
+      // schedule, not mock data.
       assessments: [
         // --- Today: Friday, September 11, 2026 ---
         {
@@ -64,8 +69,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 10,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-cw-character',
@@ -78,8 +83,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 15,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-econ-graphing',
@@ -92,8 +97,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 25,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-math-diffeq-discussion',
@@ -106,8 +111,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 5,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
 
         // --- Sunday, September 13, 2026 ---
@@ -130,8 +135,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 0,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-bio-fka',
@@ -144,8 +149,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 5,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
 
         // --- Monday, September 14, 2026 ---
@@ -160,8 +165,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 5,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-french-trois-ours',
@@ -174,8 +179,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 30,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-french-structures2',
@@ -188,8 +193,8 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 10,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-bio-1pager',
@@ -202,11 +207,11 @@ export const useAssessmentStore = create<AssessmentState>()(
           points: 25,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
-          // The pre-loaded 4-stage mastery module lives here.
+          // The pre-loaded multi-format study pack (notes, flashcards, MCQs) lives here.
           id: 'seed-bio-quiz',
           title: 'Quiz: Science of Biology',
           type: 'Quiz',
@@ -216,19 +221,11 @@ export const useAssessmentStore = create<AssessmentState>()(
           status: 'Upcoming',
           points: 35,
           readinessIndex: 0,
-          pastedMaterials: `Attention: The conscious bottleneck limiting stimuli into working memory
-Encoding: Transferring working memory to long-term storage via schemas
-Emergent Property: Novel characteristics arising strictly from component interactions
-Morphological Species Concept: Linnaeus definition of species based on physical form
-Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species`,
-          generatedDrills: [
-            { id: 'd1', prompt: 'Attention', answer: 'The conscious bottleneck limiting stimuli into working memory' },
-            { id: 'd2', prompt: 'Encoding', answer: 'Transferring working memory to long-term storage via schemas' },
-            { id: 'd3', prompt: 'Emergent Property', answer: 'Novel characteristics arising strictly from component interactions' },
-            { id: 'd4', prompt: 'Morphological Species Concept', answer: 'Linnaeus definition of species based on physical form' },
-            { id: 'd5', prompt: 'Taxonomic Hierarchy', answer: 'Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species' },
-          ],
-          completedStages: [],
+          pastedMaterials: BIO_QUIZ_MATERIALS,
+          studyPack: generateStudyPack(BIO_QUIZ_MATERIALS),
+          totalPrepTimeMinutes: 90,
+          studySessionPacing: '50m Ultradian',
+          targetStudyDays: ['Saturday', 'Sunday'],
         },
         {
           id: 'seed-math-ch1-quiz',
@@ -241,8 +238,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 0,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
 
         // --- Major upcoming deadlines & milestones ---
@@ -257,8 +254,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 5,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-cw-short-story',
@@ -271,8 +268,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 20,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-ee-rough-draft',
@@ -285,8 +282,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 0,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-math-ch1-test',
@@ -299,8 +296,10 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 100,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          totalPrepTimeMinutes: 120,
+          studySessionPacing: '50m Ultradian',
+          targetStudyDays: [],
         },
         {
           id: 'seed-math-explore-peer-edit',
@@ -313,8 +312,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 20,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-bio-binder-check',
@@ -327,8 +326,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 75,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-bio-q1-cumulative-test',
@@ -341,8 +340,10 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 60,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          totalPrepTimeMinutes: 120,
+          studySessionPacing: '50m Ultradian',
+          targetStudyDays: [],
         },
         {
           id: 'seed-math-explore-first-draft',
@@ -355,8 +356,8 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 20,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
         {
           id: 'seed-math-explore-final-draft',
@@ -369,14 +370,15 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           points: 20,
           readinessIndex: 0,
           pastedMaterials: '',
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: EMPTY_STUDY_PACK,
+          ...DEFAULT_PLAN,
         },
       ],
       studyLogs: [],
       activeSession: {
         assessmentId: null,
         elapsedSeconds: 0,
+        lastLoggedSeconds: 0,
         isRunning: false,
       },
       verifiedBlocks: [],
@@ -387,33 +389,24 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           ...data,
           id: newId,
           readinessIndex: 0,
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: generateStudyPack(data.pastedMaterials),
         };
         set((state) => ({ assessments: [newAssessment, ...state.assessments] }));
-        get().parseMaterialsToDrills(newId, data.pastedMaterials);
       },
 
       importCanvasEvents: (incomingEvents) => {
         set((state) => {
           const existingTitles = new Set(state.assessments.map((a) => a.title));
-          const uniqueNew = incomingEvents
-            .filter((e) => !existingTitles.has(e.title) && !isPast(e.dueDate))
-            .map((e) => ({ ...e, readinessIndex: 0, completedStages: [] as PrepStage[] }));
+          const uniqueNew = incomingEvents.filter((e) => !existingTitles.has(e.title) && !isPast(e.dueDate));
           return { assessments: [...uniqueNew, ...state.assessments] };
         });
       },
 
-      parseMaterialsToDrills: (assessmentId, rawText) => {
-        const drills = parseDrillLines(rawText).map((d, idx) => ({
-          id: `drill-${assessmentId}-${idx}`,
-          prompt: d.prompt,
-          answer: d.answer,
-        }));
-
+      regenerateStudyPack: (assessmentId, rawText) => {
+        const studyPack = generateStudyPack(rawText);
         set((state) => ({
           assessments: state.assessments.map((a) =>
-            a.id === assessmentId ? { ...a, generatedDrills: drills, pastedMaterials: rawText } : a
+            a.id === assessmentId ? { ...a, studyPack, pastedMaterials: rawText } : a
           ),
         }));
       },
@@ -422,7 +415,7 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
         const target = get().assessments.find((a) => a.id === assessmentId);
         if (!target) return;
         const combined = `${target.pastedMaterials}\n${additionalText}`.trim();
-        get().parseMaterialsToDrills(assessmentId, combined);
+        get().regenerateStudyPack(assessmentId, combined);
       },
 
       startStudySession: (assessmentId) => {
@@ -430,6 +423,7 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
           activeSession: {
             assessmentId,
             elapsedSeconds: 0,
+            lastLoggedSeconds: 0,
             isRunning: true,
           },
         });
@@ -444,51 +438,47 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
         }));
       },
 
-      completeStage: (assessmentId, stage, performanceScore) => {
+      logStudySession: (assessmentId, method, performanceScore) => {
         set((state) => {
           const target = state.assessments.find((a) => a.id === assessmentId);
-          if (!target || target.completedStages.includes(stage)) return {};
+          if (!target) return {};
 
-          const completedStages = [...target.completedStages, stage];
-          const readinessIndex = Math.min(100, completedStages.length * 25);
-          const allDone = completedStages.length === PREP_STAGES.length;
-
+          const course = REGISTERED_COURSES.find((c) => c.id === target.courseId);
           const hadSession = state.activeSession.assessmentId === assessmentId;
-          let studyLogs = state.studyLogs;
+          const incrementSeconds = hadSession
+            ? Math.max(0, state.activeSession.elapsedSeconds - state.activeSession.lastLoggedSeconds)
+            : 0;
+          const durationMinutes = Math.max(1, Math.round(incrementSeconds / 60));
 
-          if (stage !== 'intake' && hadSession) {
-            const course = REGISTERED_COURSES.find((c) => c.id === target.courseId);
-            const stageMeta = PREP_STAGES.find((s) => s.id === stage);
-            const newLog: StudySessionLog = {
-              id: `log-${Date.now()}`,
-              assessmentId,
-              courseId: target.courseId,
-              timestamp: new Date().toISOString(),
-              durationMinutes: Math.max(1, Math.round(state.activeSession.elapsedSeconds / 60)),
-              methodUsed: STAGE_METHOD_MAP[stage] ?? 'Active Recall Prompt',
-              performanceScore: performanceScore ?? 0,
-              summarySnippet: `${target.title} — ${stageMeta?.title ?? stage} (${course?.name ?? ''})`,
-            };
-            studyLogs = [newLog, ...state.studyLogs];
-          }
+          const newLog: StudySessionLog = {
+            id: `log-${Date.now()}`,
+            assessmentId,
+            courseId: target.courseId,
+            timestamp: new Date().toISOString(),
+            durationMinutes,
+            methodUsed: method,
+            performanceScore,
+            summarySnippet: `${target.title} — ${method} (${course?.name ?? ''})`,
+          };
+
+          const readinessIndex = Math.min(100, Math.round(target.readinessIndex * 0.5 + performanceScore * 0.5));
 
           return {
+            studyLogs: [newLog, ...state.studyLogs],
             assessments: state.assessments.map((a) =>
               a.id === assessmentId
-                ? { ...a, completedStages, readinessIndex, status: allDone ? 'Completed' : 'Studying' }
+                ? { ...a, readinessIndex, status: readinessIndex >= 100 ? 'Completed' : 'Studying' }
                 : a
             ),
-            studyLogs,
-            activeSession:
-              stage === 'intake' || !hadSession
-                ? state.activeSession
-                : { assessmentId: null, elapsedSeconds: 0, isRunning: false },
+            activeSession: hadSession
+              ? { ...state.activeSession, lastLoggedSeconds: state.activeSession.elapsedSeconds }
+              : state.activeSession,
           };
         });
       },
 
       cancelSession: () => {
-        set({ activeSession: { assessmentId: null, elapsedSeconds: 0, isRunning: false } });
+        set({ activeSession: { assessmentId: null, elapsedSeconds: 0, lastLoggedSeconds: 0, isRunning: false } });
       },
 
       deleteAssessment: (id) => {
@@ -507,7 +497,7 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
     }),
     {
       name: 'chronoflow-store',
-      version: 3,
+      version: 4,
     }
   )
 );

@@ -1,10 +1,6 @@
 export type AssessmentType = 'Quiz' | 'Test' | 'Exam' | 'Assignment';
 export type AssessmentStatus = 'Upcoming' | 'Studying' | 'Completed';
-export type StudyMethod =
-  | 'Flashcard Drill'
-  | 'Active Recall Prompt'
-  | 'Diagnostic Quiz'
-  | 'Case Study Mock';
+export type StudyMethod = 'Notes Review' | 'Flashcard Drill' | 'MCQ Quiz' | 'Speed Drill' | 'Free Response';
 
 export interface CourseRef {
   id: string;
@@ -24,62 +20,61 @@ export const REGISTERED_COURSES: CourseRef[] = [
   { id: 'ib-ee', name: 'IBDP Extended Essay', code: 'EE', color: '#94A3B8' },
 ];
 
+// --- Study pack: the multi-format content generated from pasted materials ---
+
 export interface DrillCard {
   id: string;
   prompt: string;
   answer: string;
-  confidenceScore?: 1 | 2 | 3;
 }
 
-/**
- * The four-stage mastery progression every assessment moves through.
- * Readiness only advances on stage completion, never on individual card interactions.
- */
-export type PrepStage = 'intake' | 'review' | 'diagnostic' | 'mastery';
-
-export interface StageMeta {
-  id: PrepStage;
-  order: number;
-  title: string;
-  shortLabel: string;
-  description: string;
-  weight: number;
+export interface NotePoint {
+  /** Bold anchor term, or empty string for a plain bullet with no anchor. */
+  term: string;
+  text: string;
 }
 
-export const PREP_STAGES: StageMeta[] = [
-  {
-    id: 'intake',
-    order: 1,
-    title: 'Note Intake & Structural Encoding',
-    shortLabel: 'Intake',
-    description: 'Validate source materials and encode key concepts into structured prep modules.',
-    weight: 25,
-  },
-  {
-    id: 'review',
-    order: 2,
-    title: 'Deep Note Review & Two-Column Recall',
-    shortLabel: 'Review',
-    description: 'Work through masked term/definition pairs to reinforce initial encoding.',
-    weight: 25,
-  },
-  {
-    id: 'diagnostic',
-    order: 3,
-    title: 'Diagnostic Drill & Quizzing',
-    shortLabel: 'Diagnostic',
-    description: 'Timed, multi-question active testing to surface weak concepts.',
-    weight: 25,
-  },
-  {
-    id: 'mastery',
-    order: 4,
-    title: 'Mastery Exam Simulation',
-    shortLabel: 'Mastery',
-    description: 'Full-length, exam-conditions recall simulation.',
-    weight: 25,
-  },
-];
+export interface SynthesisNote {
+  id: string;
+  heading: string;
+  points: NotePoint[];
+}
+
+export interface MCQQuestion {
+  id: string;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+}
+
+export interface FreeResponsePrompt {
+  id: string;
+  prompt: string;
+  marks: number | null;
+  markscheme: string;
+}
+
+export interface StudyPack {
+  notes: SynthesisNote[];
+  flashcards: DrillCard[];
+  mcqs: MCQQuestion[];
+  freeResponse: FreeResponsePrompt[];
+}
+
+// --- Study time & schedule planning ---
+
+export type StudyPacing = '50m Ultradian' | '25m Pomodoro' | '15m Micro-Spam';
+
+export const PACING_MINUTES: Record<StudyPacing, number> = {
+  '50m Ultradian': 50,
+  '25m Pomodoro': 25,
+  '15m Micro-Spam': 15,
+};
+
+export const STUDY_PACING_OPTIONS: StudyPacing[] = ['50m Ultradian', '25m Pomodoro', '15m Micro-Spam'];
+
+export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+export type DayOfWeek = (typeof DAYS_OF_WEEK)[number];
 
 export interface Assessment {
   id: string;
@@ -93,8 +88,10 @@ export interface Assessment {
   actualScore?: number;
   readinessIndex: number;
   pastedMaterials: string;
-  generatedDrills: DrillCard[];
-  completedStages: PrepStage[];
+  studyPack: StudyPack;
+  totalPrepTimeMinutes: number;
+  studySessionPacing: StudyPacing;
+  targetStudyDays: DayOfWeek[];
 }
 
 export interface StudySessionLog {

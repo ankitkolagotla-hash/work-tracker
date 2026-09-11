@@ -5,7 +5,7 @@ export interface ParsedDrillLine {
   answer: string;
 }
 
-function splitLine(line: string): ParsedDrillLine | null {
+export function splitConceptLine(line: string): ParsedDrillLine | null {
   if (line.includes(':')) {
     const idx = line.indexOf(':');
     const prompt = line.slice(0, idx).trim();
@@ -26,7 +26,7 @@ export function parseDrillLines(raw: string): ParsedDrillLine[] {
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l.length > 0)
-    .map(splitLine)
+    .map(splitConceptLine)
     .filter((x): x is ParsedDrillLine => x !== null);
 }
 

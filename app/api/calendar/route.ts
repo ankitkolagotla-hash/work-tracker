@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { REGISTERED_COURSES } from '@/types/assessment';
+import { generateStudyPack } from '@/lib/studyGenerator';
 
 export async function POST(req: Request) {
   try {
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
               summary.toLowerCase().includes(c.code.toLowerCase())
           ) || REGISTERED_COURSES[5];
 
+        const pastedMaterials = descMatch ? descMatch[1].replace(/\\n/g, '\n').replace(/\\/g, '') : '';
+
         events.push({
           id: `canvas-${i}-${Date.now()}`,
           title: summary,
@@ -42,12 +45,14 @@ export async function POST(req: Request) {
           courseId: matchedCourse.id,
           unitsCovered: ['General Syllabus Unit'],
           dueDate: new Date(formattedDate).toISOString(),
-          pastedMaterials: descMatch ? descMatch[1].replace(/\\n/g, '\n').replace(/\\/g, '') : '',
+          pastedMaterials,
           status: 'Upcoming',
           points: 10,
           readinessIndex: 0,
-          generatedDrills: [],
-          completedStages: [],
+          studyPack: generateStudyPack(pastedMaterials),
+          totalPrepTimeMinutes: 60,
+          studySessionPacing: '25m Pomodoro',
+          targetStudyDays: [],
         });
       }
     }

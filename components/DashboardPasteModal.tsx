@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { useAssessmentStore } from '../store/useAssessmentStore';
 import { parseDashboardText } from '../lib/dashboardParse';
 import { REGISTERED_COURSES, Assessment } from '../types/assessment';
+import { EMPTY_STUDY_PACK } from '../lib/studyGenerator';
 import { isUpcoming, toDateOnly } from '../lib/date';
 import { ClipboardPaste, X, CalendarPlus } from 'lucide-react';
 
@@ -29,8 +30,10 @@ export const DashboardPasteModal: React.FC<{ isOpen: boolean; onClose: () => voi
       points: item.points,
       readinessIndex: 0,
       pastedMaterials: '',
-      generatedDrills: [],
-      completedStages: [],
+      studyPack: EMPTY_STUDY_PACK,
+      totalPrepTimeMinutes: 60,
+      studySessionPacing: '25m Pomodoro',
+      targetStudyDays: [],
     }));
     importCanvasEvents(events);
     setRawText('');
