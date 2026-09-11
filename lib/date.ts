@@ -1,6 +1,6 @@
-export const BASELINE_DATE_STR = '2026-09-10';
-export const BASELINE_LABEL = 'Thursday, September 10, 2026';
-export const BASELINE_TIMESTAMP = Date.UTC(2026, 8, 10);
+export const BASELINE_DATE_STR = '2026-09-11';
+export const BASELINE_LABEL = 'Friday, September 11, 2026';
+export const BASELINE_TIMESTAMP = Date.UTC(2026, 8, 11);
 
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -39,13 +39,9 @@ export function isSaturday(dateStr: string): boolean {
   return getWeekdayIndex(dateStr) === 5;
 }
 
-export function getMonday(dateStr: string): string {
-  return addDays(dateStr, -getWeekdayIndex(dateStr));
-}
-
+/** Rolling 7-day window starting at the anchor date (today), not calendar-week aligned. */
 export function buildWeekDays(anchorDateStr: string = BASELINE_DATE_STR): string[] {
-  const monday = getMonday(anchorDateStr);
-  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  return Array.from({ length: 7 }, (_, i) => addDays(anchorDateStr, i));
 }
 
 export function formatDayLabel(dateStr: string): string {

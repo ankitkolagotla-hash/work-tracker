@@ -117,7 +117,9 @@ function DailyView({
   onToggle: (key: string) => void;
 }) {
   const todaysAssessments = assessments.filter((a) => toDateOnly(a.dueDate) === BASELINE_DATE_STR);
-  const upcoming = assessments.filter((a) => a.status !== 'Completed');
+  const upcoming = assessments
+    .filter((a) => a.status !== 'Completed')
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const focusBlocks = DAILY_BLOCKS.filter((b) => b.type === 'focus');
   const verifiedFocusCount = focusBlocks.filter((b) => verifiedBlocks.includes(`${BASELINE_DATE_STR}::${b.id}`)).length;
 

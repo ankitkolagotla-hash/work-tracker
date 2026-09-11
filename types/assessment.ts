@@ -21,6 +21,7 @@ export const REGISTERED_COURSES: CourseRef[] = [
   { id: 'ib-french-sl', name: 'IB SL French', code: 'FR-SL', color: '#A78BFA' },
   { id: 'ib-bio', name: 'IB Biology', code: 'BIO-HL', color: '#34D399' },
   { id: 'ib-bus', name: 'IB Business', code: 'BUS-HL', color: '#FB923C' },
+  { id: 'ib-ee', name: 'IBDP Extended Essay', code: 'EE', color: '#94A3B8' },
 ];
 
 export interface DrillCard {
