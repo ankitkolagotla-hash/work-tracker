@@ -7,6 +7,8 @@ import { AssessmentSetupModal } from '../components/AssessmentSetupModal';
 import { DashboardPasteModal } from '../components/DashboardPasteModal';
 import { ActiveStudyWorkspace } from '../components/ActiveStudyWorkspace';
 import { CalendarView } from '../components/CalendarView';
+import { DailyIntelBriefing } from '../components/DailyIntelBriefing';
+import { NightSleepRecall } from '../components/NightSleepRecall';
 import { SprintLauncher } from '../components/SprintLauncher';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
 import { CourseHub } from '../components/CourseHub';
@@ -139,6 +141,8 @@ export default function Home() {
 
         {activeTab === 'academic' && (
           <div className="space-y-8">
+            <DailyIntelBriefing />
+            <NightSleepRecall />
             <CalendarView />
             <SprintLauncher />
             <StudyStreakTracker />

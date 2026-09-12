@@ -6,6 +6,7 @@ import {
   ACTMockExam,
   ACTSection,
   ACT_SECTIONS,
+  ACTSectionSession,
   MatchLog,
   HighlightClip,
   CoachContact,
@@ -25,11 +26,14 @@ interface LifeOSState {
   actSectionScores: ACTSectionScore[];
   actErrorLog: ACTErrorLogEntry[];
   actMockExams: ACTMockExam[];
+  actSectionSessions: ACTSectionSession[];
 
   updateSectionScore: (section: ACTSection, current: number) => void;
   logACTError: (entry: Omit<ACTErrorLogEntry, 'id'>) => void;
   deleteACTError: (id: string) => void;
   toggleMockExamComplete: (id: string) => void;
+  addACTSectionSession: (session: Omit<ACTSectionSession, 'id'>) => void;
+  deleteACTSectionSession: (id: string) => void;
 
   // --- Athletics, Recruiting & Performance Hub ---
   matchLogs: MatchLog[];
@@ -43,6 +47,7 @@ interface LifeOSState {
   deleteHighlightClip: (id: string) => void;
   addCoachContact: (contact: Omit<CoachContact, 'id'>) => void;
   updateCoachStatus: (id: string, status: CoachContactStatus) => void;
+  markTapeSent: (id: string) => void;
   deleteCoachContact: (id: string) => void;
   addTrainingLog: (log: Omit<TrainingLog, 'id'>) => void;
   deleteTrainingLog: (id: string) => void;
@@ -87,6 +92,8 @@ export const useLifeOSStore = create<LifeOSState>()(
         ], completed: false },
       ],
 
+      actSectionSessions: [],
+
       updateSectionScore: (section, current) => {
         set((state) => ({
           actSectionScores: state.actSectionScores.map((s) => (s.section === section ? { ...s, current } : s)),
@@ -107,6 +114,16 @@ export const useLifeOSStore = create<LifeOSState>()(
         set((state) => ({
           actMockExams: state.actMockExams.map((m) => (m.id === id ? { ...m, completed: !m.completed } : m)),
         }));
+      },
+
+      addACTSectionSession: (session) => {
+        set((state) => ({
+          actSectionSessions: [{ ...session, id: `act-sess-${Date.now()}` }, ...state.actSectionSessions],
+        }));
+      },
+
+      deleteACTSectionSession: (id) => {
+        set((state) => ({ actSectionSessions: state.actSectionSessions.filter((s) => s.id !== id) }));
       },
 
       matchLogs: [],
@@ -133,6 +150,13 @@ export const useLifeOSStore = create<LifeOSState>()(
         set((state) => ({
           coachContacts: state.coachContacts.map((c) =>
             c.id === id ? { ...c, status, lastContactDate: new Date().toISOString() } : c
+          ),
+        }));
+      },
+      markTapeSent: (id) => {
+        set((state) => ({
+          coachContacts: state.coachContacts.map((c) =>
+            c.id === id ? { ...c, tapeSentDate: new Date().toISOString() } : c
           ),
         }));
       },
@@ -214,7 +238,7 @@ export const useLifeOSStore = create<LifeOSState>()(
     }),
     {
       name: 'chronoflow-lifeos-store',
-      version: 1,
+      version: 2,
     }
   )
 );

@@ -1,8 +1,9 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLifeOSStore } from '../store/useLifeOSStore';
 import { HIGHLIGHT_SKILLS, HighlightSkill, CoachContactStatus, TrainingSessionType } from '../types/lifeOs';
-import { Shirt, Film, Send, Dumbbell, Trash2, Plus } from 'lucide-react';
+import { sequenceReel } from '../lib/reelSequencer';
+import { Shirt, Film, Send, Dumbbell, Trash2, Plus, Clapperboard, CheckCircle2 } from 'lucide-react';
 
 const COACH_STATUSES: CoachContactStatus[] = ['Not Contacted', 'Emailed', 'Responded', 'Following Up', 'No Response'];
 const TRAINING_TYPES: TrainingSessionType[] = ['Strength', 'Conditioning', 'Technical', 'Recovery'];
@@ -14,6 +15,7 @@ export const AthleticsHub: React.FC = () => {
         <MatchLogPanel />
         <HighlightReelPanel />
       </div>
+      <ReelSequencerPanel />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CoachPipelinePanel />
         <TrainingLogPanel />
@@ -102,7 +104,10 @@ function MatchLogPanel() {
 
 function HighlightReelPanel() {
   const { highlightClips, addHighlightClip, deleteHighlightClip } = useLifeOSStore();
-  const [timestamp, setTimestamp] = useState('');
+  const [matchName, setMatchName] = useState('');
+  const [opponent, setOpponent] = useState('');
+  const [timestampStart, setTimestampStart] = useState('');
+  const [timestampEnd, setTimestampEnd] = useState('');
   const [clipUrl, setClipUrl] = useState('');
   const [skillsShown, setSkillsShown] = useState<HighlightSkill[]>([]);
   const [notes, setNotes] = useState('');
@@ -113,9 +118,20 @@ function HighlightReelPanel() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clipUrl.trim()) return;
-    addHighlightClip({ timestamp: timestamp.trim(), clipUrl: clipUrl.trim(), skillsShown, notes });
-    setTimestamp('');
+    if (!clipUrl.trim() || !matchName.trim()) return;
+    addHighlightClip({
+      matchName: matchName.trim(),
+      opponent: opponent.trim(),
+      timestampStart: timestampStart.trim(),
+      timestampEnd: timestampEnd.trim(),
+      clipUrl: clipUrl.trim(),
+      skillsShown,
+      notes,
+    });
+    setMatchName('');
+    setOpponent('');
+    setTimestampStart('');
+    setTimestampEnd('');
     setClipUrl('');
     setSkillsShown([]);
     setNotes('');
@@ -126,15 +142,23 @@ function HighlightReelPanel() {
       <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
         <Film className="w-4 h-4 text-cf-accent" /> Highlight Reel Production
       </h3>
-      <p className="text-xs text-slate-400 mb-4">Timestamps, clip links, and the skills each clip showcases.</p>
+      <p className="text-xs text-slate-400 mb-4">Clip intake: match, timestamps, link, and the skills each clip showcases.</p>
 
       <form onSubmit={handleSubmit} className="space-y-2 mb-4">
         <div className="grid grid-cols-2 gap-2">
-          <input value={timestamp} onChange={(e) => setTimestamp(e.target.value)} placeholder="Timestamp (12:34)"
+          <input value={matchName} onChange={(e) => setMatchName(e.target.value)} placeholder="Match name"
             className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
-          <input value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} placeholder="Clip URL"
+          <input value={opponent} onChange={(e) => setOpponent(e.target.value)} placeholder="Opponent"
             className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={timestampStart} onChange={(e) => setTimestampStart(e.target.value)} placeholder="Start (12:34)"
+            className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
+          <input value={timestampEnd} onChange={(e) => setTimestampEnd(e.target.value)} placeholder="End (12:48)"
+            className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
+        </div>
+        <input value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} placeholder="Clip link or file reference"
+          className="w-full bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
         <div className="flex flex-wrap gap-1.5">
           {HIGHLIGHT_SKILLS.map((skill) => (
             <button
@@ -163,8 +187,10 @@ function HighlightReelPanel() {
           highlightClips.map((c) => (
             <div key={c.id} className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-md px-3 py-2 text-xs">
               <div className="min-w-0">
-                <div className="text-white font-semibold truncate">{c.timestamp} · {c.skillsShown.join(', ') || 'Untagged'}</div>
-                <div className="text-slate-500 truncate">{c.clipUrl}</div>
+                <div className="text-white font-semibold truncate">
+                  {c.matchName} vs {c.opponent} · {c.timestampStart}–{c.timestampEnd}
+                </div>
+                <div className="text-slate-500 truncate">{c.skillsShown.join(', ') || 'Untagged'} · {c.clipUrl}</div>
               </div>
               <button onClick={() => deleteHighlightClip(c.id)} className="text-slate-500 hover:text-red-400 shrink-0 ml-2">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -177,8 +203,72 @@ function HighlightReelPanel() {
   );
 }
 
+function ReelSequencerPanel() {
+  const highlightClips = useLifeOSStore((s) => s.highlightClips);
+  const sequenced = useMemo(() => sequenceReel(highlightClips), [highlightClips]);
+
+  const minutes = Math.floor(sequenced.estimatedSeconds / 60);
+  const seconds = sequenced.estimatedSeconds % 60;
+  const overUnderLabel =
+    sequenced.overUnderSeconds === 0
+      ? 'right on target'
+      : sequenced.overUnderSeconds > 0
+      ? `${sequenced.overUnderSeconds}s over the 3:00 target`
+      : `${Math.abs(sequenced.overUnderSeconds)}s under the 3:00 target`;
+
+  return (
+    <div className="bg-cf-card border border-cf-border rounded-xl p-6">
+      <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+        <Clapperboard className="w-4 h-4 text-cf-accent" /> Adaptive Reel Sequencer
+      </h3>
+      <p className="text-xs text-slate-400 mb-4">
+        Deterministic rule-based ordering — not AI-generated — arranging clips into the recruiting-tape structure scouts expect: Hook, then
+        Core Skill Isolation, then High-Pressure Sequences.
+      </p>
+
+      {highlightClips.length === 0 ? (
+        <p className="text-xs text-slate-500">Add clips above to generate a sequenced tape.</p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-lg p-3 mb-4">
+            <span className="text-xs text-slate-400">Estimated runtime (~12s/clip)</span>
+            <span className="font-mono font-bold text-cf-accent text-sm">
+              {minutes}:{seconds.toString().padStart(2, '0')} <span className="text-slate-500 text-[11px] font-normal">({overUnderLabel})</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <ReelSegmentColumn title="Hook" clips={sequenced.hook} />
+            <ReelSegmentColumn title="Core Skill Isolation" clips={sequenced.coreSkills} />
+            <ReelSegmentColumn title="High-Pressure Sequences" clips={sequenced.highPressure} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ReelSegmentColumn({ title, clips }: { title: string; clips: ReturnType<typeof sequenceReel>['hook'] }) {
+  return (
+    <div className="bg-cf-bg border border-cf-border rounded-lg p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-cf-accent mb-2">{title} ({clips.length})</p>
+      <div className="space-y-1.5">
+        {clips.length === 0 ? (
+          <p className="text-[11px] text-slate-500">No clips in this segment.</p>
+        ) : (
+          clips.map((c) => (
+            <div key={c.id} className="text-[11px] text-slate-300 truncate">
+              {c.matchName} · {c.timestampStart}–{c.timestampEnd}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CoachPipelinePanel() {
-  const { coachContacts, addCoachContact, updateCoachStatus, deleteCoachContact } = useLifeOSStore();
+  const { coachContacts, addCoachContact, updateCoachStatus, markTapeSent, deleteCoachContact } = useLifeOSStore();
   const [schoolName, setSchoolName] = useState('');
   const [coachName, setCoachName] = useState('');
   const [email, setEmail] = useState('');
@@ -186,7 +276,15 @@ function CoachPipelinePanel() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolName.trim()) return;
-    addCoachContact({ schoolName: schoolName.trim(), coachName: coachName.trim(), email: email.trim(), status: 'Not Contacted', lastContactDate: null, notes: '' });
+    addCoachContact({
+      schoolName: schoolName.trim(),
+      coachName: coachName.trim(),
+      email: email.trim(),
+      status: 'Not Contacted',
+      lastContactDate: null,
+      tapeSentDate: null,
+      notes: '',
+    });
     setSchoolName('');
     setCoachName('');
     setEmail('');
@@ -216,23 +314,39 @@ function CoachPipelinePanel() {
           <p className="text-xs text-slate-500">No coach contacts yet.</p>
         ) : (
           coachContacts.map((c) => (
-            <div key={c.id} className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-md px-3 py-2 text-xs gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="text-white font-semibold truncate">{c.schoolName}</div>
-                <div className="text-slate-500 truncate">{c.coachName}</div>
+            <div key={c.id} className="bg-cf-bg border border-cf-border rounded-md px-3 py-2 text-xs space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-white font-semibold truncate">{c.schoolName}</div>
+                  <div className="text-slate-500 truncate">{c.coachName}</div>
+                </div>
+                <select
+                  value={c.status}
+                  onChange={(e) => updateCoachStatus(c.id, e.target.value as CoachContactStatus)}
+                  className="bg-cf-card border border-cf-border rounded px-1.5 py-1 text-[10px] text-slate-300 shrink-0"
+                >
+                  {COACH_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <button onClick={() => deleteCoachContact(c.id)} className="text-slate-500 hover:text-red-400 shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <select
-                value={c.status}
-                onChange={(e) => updateCoachStatus(c.id, e.target.value as CoachContactStatus)}
-                className="bg-cf-card border border-cf-border rounded px-1.5 py-1 text-[10px] text-slate-300 shrink-0"
-              >
-                {COACH_STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <button onClick={() => deleteCoachContact(c.id)} className="text-slate-500 hover:text-red-400 shrink-0">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center justify-between pt-1 border-t border-cf-border">
+                {c.tapeSentDate ? (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+                    <CheckCircle2 className="w-3 h-3" /> Tape sent {new Date(c.tapeSentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => markTapeSent(c.id)}
+                    className="flex items-center gap-1 text-[10px] font-semibold text-cf-accent hover:opacity-80"
+                  >
+                    <Film className="w-3 h-3" /> Mark Tape Sent
+                  </button>
+                )}
+              </div>
             </div>
           ))
         )}

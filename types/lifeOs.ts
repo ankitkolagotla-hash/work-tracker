@@ -72,6 +72,38 @@ export interface ACTMockExam {
   completed: boolean;
 }
 
+// --- ACT study hours & section log ---
+
+export type ACTLogSection = ACTSection | 'Full Mock';
+export const ACT_LOG_SECTIONS: ACTLogSection[] = ['English', 'Math', 'Reading', 'Science', 'Full Mock'];
+
+export const ACT_TARGET_PREP_HOURS = 120;
+
+export interface ACTSectionSession {
+  id: string;
+  date: string;
+  section: ACTLogSection;
+  minutesSpent: number;
+  questionsAttempted: number;
+  questionsCorrect: number;
+}
+
+// --- ACT image/OCR intake grading ---
+
+export interface ACTGradedItem {
+  questionNumber: number;
+  selectedAnswer: string;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+}
+
+export const SECTION_REMEDIATION_TIPS: Record<ACTSection, string> = {
+  English: 'Review comma usage, sentence boundaries, and rhetorical-skills questions (relevance, transitions).',
+  Math: 'Re-derive the problem from scratch — check for sign errors, a misapplied formula, or a skipped units step.',
+  Reading: 'Return to the cited line reference; the correct answer is almost always directly supported by the text, not inferred.',
+  Science: 'Check whether the question asks about a specific figure/table vs. the general trend — mismatches here are the most common trap.',
+};
+
 // ---------------------------------------------------------------------------
 // Athletics, Recruiting & Performance Hub
 // ---------------------------------------------------------------------------
@@ -88,19 +120,23 @@ export interface MatchLog {
 }
 
 export const HIGHLIGHT_SKILLS = [
-  'Distribution',
-  'Transitional Defending',
+  'Distribution / Long Passing',
+  'Transition Defense',
+  'Tactical Positioning',
   'Set Pieces',
-  'Ball Progression',
-  '1v1 Defending',
-  'Aerial Duels',
+  'Leadership / Communication',
 ] as const;
 export type HighlightSkill = (typeof HIGHLIGHT_SKILLS)[number];
 
+/** Where a clip lands in the adaptive 3-part recruiting tape structure. */
+export type ReelSegment = 'Hook' | 'Core Skill Isolation' | 'High-Pressure Sequences';
+
 export interface HighlightClip {
   id: string;
-  matchId?: string;
-  timestamp: string;
+  matchName: string;
+  opponent: string;
+  timestampStart: string;
+  timestampEnd: string;
   clipUrl: string;
   skillsShown: HighlightSkill[];
   notes: string;
@@ -115,6 +151,7 @@ export interface CoachContact {
   email: string;
   status: CoachContactStatus;
   lastContactDate: string | null;
+  tapeSentDate: string | null;
   notes: string;
 }
 
@@ -159,7 +196,50 @@ export interface SupplementalEssay {
   status: EssayStatus;
 }
 
-export type ColdEmailCategory = 'Socioeconomic Inequality Research' | 'Urban Heat Islands' | 'Public Policy Research';
+export type ColdEmailCategory = 'Socioeconomic Inequality Research' | 'Urban Heat Islands' | 'Public Policy Research' | 'Custom';
+
+export type EmailFormalityTone = 'Inquiring' | 'Assertive';
+export type EmailRegisterTone = 'Scholarly' | 'Academic';
+
+export interface ColdEmailBuilderInput {
+  category: ColdEmailCategory;
+  customTopic: string;
+  professorName: string;
+  university: string;
+  paperFocus: string;
+  studentAngle: string;
+  formalityTone: EmailFormalityTone;
+  registerTone: EmailRegisterTone;
+}
+
+// --- University Fit & Recommendation Engine ---
+
+export type CampusSize = 'Small' | 'Medium' | 'Large';
+export type LocationVibe = 'Urban' | 'Suburban' | 'Rural';
+export type SelectivityTier = 'Reach' | 'Target' | 'Safety';
+
+export interface UniversityProfile {
+  id: string;
+  name: string;
+  acceptanceRatePct: number;
+  campusSize: CampusSize;
+  locationVibe: LocationVibe;
+  strongMajors: string[];
+  essayRequirements: string[];
+}
+
+export interface UniversityFitPreferences {
+  targetMajors: string[];
+  campusSize: CampusSize | 'No Preference';
+  locationVibe: LocationVibe | 'No Preference';
+  selectivityTier: SelectivityTier | 'No Preference';
+}
+
+export interface UniversityMatch {
+  university: UniversityProfile;
+  tier: SelectivityTier;
+  matchScore: number;
+}
 
 export interface ColdEmailTemplate {
   id: string;
@@ -231,6 +311,21 @@ My name is {{YOUR_NAME}}, and I'm a high school student researching {{YOUR_RESEA
 Would you be willing to share your perspective on {{SPECIFIC_QUESTION}}? I'd be glad to work around your schedule for even a short call.
 
 Thank you for considering my request.
+
+Best,
+{{YOUR_NAME}}`,
+  },
+  {
+    id: 'tmpl-custom',
+    category: 'Custom',
+    subject: 'Prospective student interest in your research on {{TOPIC}}',
+    body: `Dear Professor {{PROFESSOR_NAME}},
+
+My name is {{YOUR_NAME}}, a high school student researching {{TOPIC}} for an independent project. Your work, {{PAPER_TITLE}}, shaped how I'm thinking about {{SPECIFIC_FINDING}}.
+
+I'm exploring {{YOUR_RESEARCH_QUESTION}} and would value your perspective on {{SPECIFIC_QUESTION}}. Would you be open to a brief 15-minute call, or could you point me toward foundational readings in this area?
+
+Thank you for considering this — I know your time is limited.
 
 Best,
 {{YOUR_NAME}}`,

@@ -1,10 +1,36 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useLifeOSStore } from '../store/useLifeOSStore';
-import { ACT_SECTIONS, ACT_ROOT_CAUSES, ACT_TARGET_DATE, ACTSection, ACTRootCause, ACTDrillQuestion } from '../types/lifeOs';
+import {
+  ACT_SECTIONS,
+  ACT_ROOT_CAUSES,
+  ACT_TARGET_DATE,
+  ACT_LOG_SECTIONS,
+  ACT_TARGET_PREP_HOURS,
+  ACTSection,
+  ACTRootCause,
+  ACTDrillQuestion,
+  ACTLogSection,
+  ACTGradedItem,
+  SECTION_REMEDIATION_TIPS,
+} from '../types/lifeOs';
 import { generateAdaptiveDrillSet } from '../lib/actDrills';
 import { dateStrToTimestamp, formatFullDate } from '../lib/date';
-import { Target, AlertOctagon, Zap, CalendarClock, Trash2, Check } from 'lucide-react';
+import { recognizeImageText, gradeAnswers } from '../lib/actOcr';
+import { predictSectionScores, predictComposite } from '../lib/actPredictor';
+import {
+  Target,
+  AlertOctagon,
+  Zap,
+  CalendarClock,
+  Trash2,
+  Check,
+  Upload,
+  Loader2,
+  Clock,
+  TrendingUp,
+  X,
+} from 'lucide-react';
 
 function daysUntil(dateStr: string): number {
   const now = dateStrToTimestamp('2026-09-11');
@@ -88,6 +114,13 @@ export const ACTMasteryHub: React.FC = () => {
             Target composite: <span className="text-white font-mono">{targetComposite}</span>
           </div>
         </div>
+      </div>
+
+      <ScorePredictorPanel />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ImageIntakePanel />
+        <StudyHoursLogPanel />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -319,6 +352,344 @@ function DrillRunnerMini({ questions, onExit }: { questions: ACTDrillQuestion[];
           {idx + 1 < questions.length ? 'Next' : 'Finish'}
         </button>
       )}
+    </div>
+  );
+}
+
+function ScorePredictorPanel() {
+  const actSectionScores = useLifeOSStore((s) => s.actSectionScores);
+  const actSectionSessions = useLifeOSStore((s) => s.actSectionSessions);
+
+  const predicted = useMemo(
+    () => predictSectionScores(actSectionScores, actSectionSessions),
+    [actSectionScores, actSectionSessions]
+  );
+  const composite = useMemo(() => predictComposite(predicted), [predicted]);
+
+  return (
+    <div className="bg-cf-card border border-cf-border rounded-xl p-6">
+      <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-cf-accent" /> Real-Time Score Predictor
+      </h3>
+      <p className="text-xs text-slate-400 mb-4">
+        Blends your manually-entered current score (40%) with accuracy from logged practice sessions (60%). Updates the moment you log a
+        session or drill error below.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        {predicted.map((p) => (
+          <div key={p.section} className="bg-cf-bg border border-cf-border rounded-lg p-3">
+            <p className="text-xs text-slate-400 mb-1">{p.section}</p>
+            <p className="text-xl font-mono font-bold text-white">
+              {p.predicted}
+              <span className="text-xs text-slate-500 font-normal"> / 36</span>
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1">
+              {p.sessionsLogged > 0 ? `${p.accuracyPct}% acc · ${p.sessionsLogged} session${p.sessionsLogged === 1 ? '' : 's'}` : 'Manual only — log a session'}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-lg p-4">
+        <p className="text-xs text-slate-400 uppercase tracking-wider">Predicted Composite</p>
+        <p className="text-3xl font-mono font-bold text-cf-accent">{composite}</p>
+      </div>
+    </div>
+  );
+}
+
+function ImageIntakePanel() {
+  const logACTError = useLifeOSStore((s) => s.logACTError);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [keyFile, setKeyFile] = useState<File | null>(null);
+  const [graded, setGraded] = useState<ACTGradedItem[] | null>(null);
+  const [overrides, setOverrides] = useState<Record<number, boolean>>({});
+  const [loggingSection, setLoggingSection] = useState<ACTSection>('English');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loggedCount, setLoggedCount] = useState(0);
+
+  const handleGrade = async () => {
+    if (!selectedFile) return;
+    setLoading(true);
+    setError(null);
+    setLoggedCount(0);
+    try {
+      const selectedText = await recognizeImageText(selectedFile);
+      const keyText = keyFile ? await recognizeImageText(keyFile) : null;
+      setGraded(gradeAnswers(selectedText, keyText));
+      setOverrides({});
+    } catch (err) {
+      setError('OCR failed to read the image. Try a clearer, higher-contrast photo.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const effectiveCorrect = (item: ACTGradedItem): boolean | null => item.isCorrect ?? overrides[item.questionNumber] ?? null;
+  const missedCount = graded?.filter((item) => effectiveCorrect(item) === false).length ?? 0;
+
+  const handleLogMissed = () => {
+    if (!graded) return;
+    graded
+      .filter((item) => effectiveCorrect(item) === false)
+      .forEach((item) => {
+        logACTError({
+          testDate: new Date().toISOString().slice(0, 10),
+          section: loggingSection,
+          questionType: `Q${item.questionNumber} (OCR intake)`,
+          rootCause: 'Content Gap',
+          notes: `Selected ${item.selectedAnswer}${item.correctAnswer ? `, correct ${item.correctAnswer}` : ''}`,
+        });
+      });
+    setLoggedCount(missedCount);
+  };
+
+  return (
+    <div className="bg-cf-card border border-cf-border rounded-xl p-6">
+      <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+        <Upload className="w-4 h-4 text-cf-accent" /> Image / File Grading Intake
+      </h3>
+      <p className="text-xs text-slate-400 mb-4">
+        Upload a photo of your answer sheet (and optionally an answer key) to auto-grade via on-device OCR — no data leaves your browser
+        except to load the OCR engine itself.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <ImageDropZone label="Your Answers" file={selectedFile} onFile={setSelectedFile} />
+        <ImageDropZone label="Answer Key (optional)" file={keyFile} onFile={setKeyFile} />
+      </div>
+
+      <button
+        onClick={handleGrade}
+        disabled={!selectedFile || loading}
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-cf-accent hover:opacity-90 disabled:opacity-40 text-black text-xs font-semibold rounded transition mb-4"
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+        {loading ? 'Reading image...' : 'Run OCR & Grade'}
+      </button>
+
+      {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+
+      {graded && (
+        <>
+          {graded.length === 0 ? (
+            <p className="text-xs text-slate-500 mb-3">No question/answer pairs detected. Try a clearer image.</p>
+          ) : (
+            <div className="space-y-1 max-h-48 overflow-y-auto mb-3">
+              {graded.map((item) => {
+                const status = effectiveCorrect(item);
+                return (
+                  <div
+                    key={item.questionNumber}
+                    className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-md px-3 py-1.5 text-xs"
+                  >
+                    <span className="text-slate-300">
+                      Q{item.questionNumber}: <span className="font-mono text-white">{item.selectedAnswer}</span>
+                      {item.correctAnswer && <span className="text-slate-500"> (key: {item.correctAnswer})</span>}
+                    </span>
+                    {status === true && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                    {status === false && <X className="w-3.5 h-3.5 text-red-400" />}
+                    {status === null && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setOverrides((o) => ({ ...o, [item.questionNumber]: true }))}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-emerald-900 text-emerald-400"
+                        >
+                          Correct
+                        </button>
+                        <button
+                          onClick={() => setOverrides((o) => ({ ...o, [item.questionNumber]: false }))}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-red-900 text-red-400"
+                        >
+                          Missed
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {missedCount > 0 && (
+            <div className="bg-cf-bg border border-cf-border rounded-lg p-3">
+              <p className="text-[11px] text-slate-400 mb-2">{SECTION_REMEDIATION_TIPS[loggingSection]}</p>
+              <div className="flex gap-2">
+                <select
+                  value={loggingSection}
+                  onChange={(e) => setLoggingSection(e.target.value as ACTSection)}
+                  className="bg-cf-card border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent"
+                >
+                  {ACT_SECTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleLogMissed}
+                  className="flex-1 px-3 py-1.5 bg-cf-accent hover:opacity-90 text-black text-xs font-semibold rounded transition"
+                >
+                  Log {missedCount} Missed to Drill Engine
+                </button>
+              </div>
+              {loggedCount > 0 && <p className="text-[10px] text-emerald-400 mt-2">Logged {loggedCount} error(s).</p>}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ImageDropZone({ label, file, onFile }: { label: string; file: File | null; onFile: (f: File) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) onFile(dropped);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'));
+    const pasted = item?.getAsFile();
+    if (pasted) onFile(pasted);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
+      className={`cursor-pointer border-2 border-dashed rounded-lg p-4 text-center transition ${
+        dragOver ? 'border-cf-accent bg-cf-accent/5' : 'border-cf-border bg-cf-bg hover:border-slate-600'
+      }`}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const picked = e.target.files?.[0];
+          if (picked) onFile(picked);
+        }}
+      />
+      <p className="text-[11px] font-semibold text-slate-300">{label}</p>
+      <p className="text-[10px] text-slate-500 mt-1">{file ? file.name : 'Click, drag & drop, or paste'}</p>
+    </div>
+  );
+}
+
+function StudyHoursLogPanel() {
+  const { actSectionSessions, addACTSectionSession, deleteACTSectionSession } = useLifeOSStore();
+  const [section, setSection] = useState<ACTLogSection>('English');
+  const [minutesSpent, setMinutesSpent] = useState(30);
+  const [questionsAttempted, setQuestionsAttempted] = useState(20);
+  const [questionsCorrect, setQuestionsCorrect] = useState(15);
+
+  const totalHours = useMemo(
+    () => actSectionSessions.reduce((acc, s) => acc + s.minutesSpent, 0) / 60,
+    [actSectionSessions]
+  );
+  const progressPct = Math.min(100, (totalHours / ACT_TARGET_PREP_HOURS) * 100);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addACTSectionSession({
+      date: new Date().toISOString().slice(0, 10),
+      section,
+      minutesSpent,
+      questionsAttempted,
+      questionsCorrect: Math.min(questionsCorrect, questionsAttempted),
+    });
+  };
+
+  return (
+    <div className="bg-cf-card border border-cf-border rounded-xl p-6">
+      <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+        <Clock className="w-4 h-4 text-cf-accent" /> Study Hours &amp; Section Log
+      </h3>
+      <p className="text-xs text-slate-400 mb-4">Every logged session sharpens the score predictor above.</p>
+
+      <div className="mb-4">
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-slate-400">Prep hours logged</span>
+          <span className="font-mono text-cf-accent">{totalHours.toFixed(1)} / {ACT_TARGET_PREP_HOURS}h</span>
+        </div>
+        <div className="w-full bg-cf-bg rounded-full h-1.5 overflow-hidden">
+          <div className="bg-cf-accent h-1.5 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-2 mb-4">
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            value={section}
+            onChange={(e) => setSection(e.target.value as ACTLogSection)}
+            className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent"
+          >
+            {ACT_LOG_SECTIONS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            value={minutesSpent}
+            onChange={(e) => setMinutesSpent(Number(e.target.value))}
+            placeholder="Minutes"
+            className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="number"
+            value={questionsAttempted}
+            onChange={(e) => setQuestionsAttempted(Number(e.target.value))}
+            placeholder="Questions attempted"
+            className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent"
+          />
+          <input
+            type="number"
+            value={questionsCorrect}
+            onChange={(e) => setQuestionsCorrect(Number(e.target.value))}
+            placeholder="Questions correct"
+            className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent"
+          />
+        </div>
+        <button type="submit" className="w-full px-3 py-2 bg-cf-accent hover:opacity-90 text-black text-xs font-semibold rounded transition">
+          Log Session
+        </button>
+      </form>
+
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {actSectionSessions.length === 0 ? (
+          <p className="text-xs text-slate-500">No sessions logged yet.</p>
+        ) : (
+          actSectionSessions.map((s) => (
+            <div key={s.id} className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-md px-3 py-2 text-xs">
+              <div className="min-w-0">
+                <div className="text-white font-semibold truncate">{s.section} · {s.minutesSpent}m</div>
+                <div className="text-slate-500">{s.questionsCorrect}/{s.questionsAttempted} correct · {s.date}</div>
+              </div>
+              <button onClick={() => deleteACTSectionSession(s.id)} className="text-slate-500 hover:text-red-400 shrink-0 ml-2">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
