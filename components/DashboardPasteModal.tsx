@@ -27,6 +27,7 @@ export const DashboardPasteModal: React.FC<{ isOpen: boolean; onClose: () => voi
       unitsCovered: ['Dashboard Paste Ingest'],
       dueDate: item.dueDateISO,
       status: 'Upcoming',
+      difficulty: 'Medium',
       points: item.points,
       readinessIndex: 0,
       pastedMaterials: '',

@@ -47,6 +47,7 @@ export async function POST(req: Request) {
           dueDate: new Date(formattedDate).toISOString(),
           pastedMaterials,
           status: 'Upcoming',
+          difficulty: 'Medium',
           points: 10,
           readinessIndex: 0,
           studyPack: generateStudyPack(pastedMaterials),

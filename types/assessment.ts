@@ -1,5 +1,6 @@
 export type AssessmentType = 'Quiz' | 'Test' | 'Exam' | 'Assignment';
-export type AssessmentStatus = 'Upcoming' | 'Studying' | 'Completed';
+export type AssessmentStatus = 'Upcoming' | 'In Progress' | 'Completed' | 'Archived';
+export type AssessmentDifficulty = 'Easy' | 'Medium' | 'Hard';
 export type StudyMethod = 'Notes Review' | 'Flashcard Drill' | 'MCQ Quiz' | 'Speed Drill' | 'Free Response';
 
 export interface CourseRef {
@@ -52,6 +53,9 @@ export interface FreeResponsePrompt {
   prompt: string;
   marks: number | null;
   markscheme: string;
+  keywordRubric: string[];
+  exemplar: string;
+  minWords: number;
 }
 
 export interface StudyPack {
@@ -84,6 +88,7 @@ export interface Assessment {
   unitsCovered: string[];
   dueDate: string;
   status: AssessmentStatus;
+  difficulty: AssessmentDifficulty;
   points: number;
   actualScore?: number;
   readinessIndex: number;

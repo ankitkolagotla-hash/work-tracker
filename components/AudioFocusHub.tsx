@@ -1,11 +1,12 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFocusStore } from '../store/useFocusStore';
 import { focusAudioEngine, AUDIO_PRESETS, AudioPresetId } from '../lib/audio';
-import { Play, Pause, Volume2, Waves } from 'lucide-react';
+import { Play, Pause, Volume2, Waves, ChevronUp, Check } from 'lucide-react';
 
 export const AudioFocusHub: React.FC = () => {
   const { audioPresetId, volume, isAudioPlaying, phase, setAudioPreset, setVolume, setAudioPlaying } = useFocusStore();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Automatically cue "Silence / Optic Flow" the moment a break phase starts.
   useEffect(() => {
@@ -32,6 +33,7 @@ export const AudioFocusHub: React.FC = () => {
     if (isAudioPlaying) {
       focusAudioEngine.start(id, volume);
     }
+    setPickerOpen(false);
   };
 
   const handleVolume = (v: number) => {
@@ -39,9 +41,13 @@ export const AudioFocusHub: React.FC = () => {
     focusAudioEngine.setVolume(v);
   };
 
+  const currentPreset = AUDIO_PRESETS.find((p) => p.id === audioPresetId) ?? AUDIO_PRESETS[0];
+  const toneOptions = AUDIO_PRESETS.filter((p) => p.category === 'tone');
+  const instrumentalOptions = AUDIO_PRESETS.filter((p) => p.category === 'instrumental');
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-cf-card border-t border-cf-border px-4 py-3">
-      <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3">
+      <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3 relative">
         <button
           type="button"
           onClick={togglePlay}
@@ -50,22 +56,59 @@ export const AudioFocusHub: React.FC = () => {
           {isAudioPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {AUDIO_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => selectPreset(p.id)}
-              title={p.description}
-              className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition border ${
-                audioPresetId === p.id
-                  ? 'bg-cf-accent/15 text-cf-accent border-cf-accent/40'
-                  : 'text-cf-text-muted hover:text-cf-text border-transparent'
-              }`}
-            >
-              {p.name}
-            </button>
-          ))}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((o) => !o)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-cf-bg border border-cf-border text-cf-text hover:border-slate-600 transition"
+          >
+            {currentPreset.name} <ChevronUp className={`w-3 h-3 transition-transform ${pickerOpen ? '' : 'rotate-180'}`} />
+          </button>
+
+          {pickerOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
+              <div className="absolute bottom-full left-0 mb-2 w-72 bg-cf-card border border-cf-border rounded-xl p-3 shadow-2xl z-50 max-h-80 overflow-y-auto">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-cf-text-muted mb-1.5">Focus Tones</p>
+                <div className="space-y-1 mb-3">
+                  {toneOptions.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => selectPreset(p.id)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition ${
+                        audioPresetId === p.id ? 'bg-cf-accent/15 text-cf-accent' : 'text-cf-text hover:bg-cf-bg'
+                      }`}
+                    >
+                      <span className="text-left">
+                        <span className="block font-semibold">{p.name}</span>
+                        <span className="block text-[10px] text-cf-text-muted">{p.description}</span>
+                      </span>
+                      {audioPresetId === p.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[10px] font-bold uppercase tracking-wider text-cf-text-muted mb-1.5">Instrumental Channels</p>
+                <div className="space-y-1">
+                  {instrumentalOptions.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => selectPreset(p.id)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition ${
+                        audioPresetId === p.id ? 'bg-cf-accent/15 text-cf-accent' : 'text-cf-text hover:bg-cf-bg'
+                      }`}
+                    >
+                      <span className="text-left">
+                        <span className="block font-semibold">{p.name}</span>
+                        <span className="block text-[10px] text-cf-text-muted">{p.description}</span>
+                      </span>
+                      {audioPresetId === p.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 ml-auto min-w-[120px]">

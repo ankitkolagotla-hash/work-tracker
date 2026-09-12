@@ -578,8 +578,10 @@ function SpeedDrillPanel({ cards, onComplete }: { cards: DrillCard[]; onComplete
 function FreeResponsePanel({ prompts, onComplete }: { prompts: FreeResponsePrompt[]; onComplete: (score: number) => void }) {
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState('');
-  const [showMarkscheme, setShowMarkscheme] = useState(false);
-  const [answeredCount, setAnsweredCount] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [showExemplar, setShowExemplar] = useState(false);
+  const [scoreSum, setScoreSum] = useState(0);
+  const [maxSum, setMaxSum] = useState(0);
   const [done, setDone] = useState(false);
 
   if (prompts.length === 0) {
@@ -587,34 +589,54 @@ function FreeResponsePanel({ prompts, onComplete }: { prompts: FreeResponsePromp
       <EmptyState message='No scenario or essay prompts detected. Add a line with "(N marks)" or a command verb like "Explain..." to generate practice prompts here.' />
     );
   }
+
+  const resetAll = () => {
+    setIdx(0);
+    setAnswer('');
+    setSubmitted(false);
+    setShowExemplar(false);
+    setScoreSum(0);
+    setMaxSum(0);
+    setDone(false);
+  };
+
   if (done) {
+    const pct = maxSum > 0 ? Math.round((scoreSum / maxSum) * 100) : 0;
     return (
-      <CompletionSummary
-        correct={answeredCount}
-        total={prompts.length}
-        onRestart={() => {
-          setIdx(0);
-          setAnswer('');
-          setShowMarkscheme(false);
-          setAnsweredCount(0);
-          setDone(false);
-        }}
-      />
+      <div className="text-center py-10">
+        <div className="text-4xl font-mono font-bold text-cf-accent mb-2">{pct}%</div>
+        <p className="text-sm text-slate-400 mb-6">
+          Self-scored {scoreSum} / {maxSum} marks across {prompts.length} prompt{prompts.length === 1 ? '' : 's'}.
+        </p>
+        <button
+          onClick={resetAll}
+          className="flex items-center gap-2 mx-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded transition"
+        >
+          <RotateCcw className="w-3.5 h-3.5" /> Run Again
+        </button>
+      </div>
     );
   }
 
   const p = prompts[idx];
+  const totalMarks = p.marks ?? 4;
+  const wordCount = answer.trim().length === 0 ? 0 : answer.trim().split(/\s+/).length;
+  const meetsWordGate = wordCount >= p.minWords;
+  const matchedKeywords = new Set(p.keywordRubric.filter((k) => answer.toLowerCase().includes(k.toLowerCase())));
 
-  const handleNext = () => {
-    const nextAnswered = answeredCount + (answer.trim().length > 0 ? 1 : 0);
-    setAnsweredCount(nextAnswered);
+  const handleSelfScore = (marks: number) => {
+    const nextScoreSum = scoreSum + marks;
+    const nextMaxSum = maxSum + totalMarks;
+    setScoreSum(nextScoreSum);
+    setMaxSum(nextMaxSum);
     if (idx + 1 < prompts.length) {
       setIdx(idx + 1);
       setAnswer('');
-      setShowMarkscheme(false);
+      setSubmitted(false);
+      setShowExemplar(false);
     } else {
       setDone(true);
-      onComplete(Math.round((nextAnswered / prompts.length) * 100));
+      onComplete(Math.round((nextScoreSum / nextMaxSum) * 100));
     }
   };
 
@@ -622,7 +644,7 @@ function FreeResponsePanel({ prompts, onComplete }: { prompts: FreeResponsePromp
     <div>
       <div className="flex justify-between items-center mb-4">
         <span className="text-xs text-slate-500">Prompt {idx + 1} of {prompts.length}</span>
-        {p.marks !== null && <span className="text-xs font-mono text-cf-accent">{p.marks} marks</span>}
+        <span className="text-xs font-mono text-cf-accent">{totalMarks} marks</span>
       </div>
 
       <div className="bg-cf-bg border border-cf-border rounded-lg p-5 mb-4">
@@ -633,32 +655,87 @@ function FreeResponsePanel({ prompts, onComplete }: { prompts: FreeResponsePromp
         rows={8}
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
+        disabled={submitted}
         placeholder="Type your response here..."
-        className="w-full bg-cf-bg border border-cf-border rounded p-3 text-sm text-slate-200 resize-none focus:outline-cf-accent mb-3"
+        className="w-full bg-cf-bg border border-cf-border rounded p-3 text-sm text-slate-200 resize-none focus:outline-cf-accent mb-2 disabled:opacity-70"
       />
 
-      <button
-        type="button"
-        onClick={() => setShowMarkscheme((s) => !s)}
-        className="text-xs font-semibold text-cf-accent hover:opacity-80 transition mb-3"
-      >
-        {showMarkscheme ? 'Hide' : 'Show'} Model Markscheme / Rubric Breakdown
-      </button>
+      <div className="flex items-center justify-between mb-3">
+        <span className={`text-xs font-mono ${meetsWordGate ? 'text-emerald-400' : 'text-slate-500'}`}>
+          {wordCount} / {p.minWords} words
+        </span>
+        {p.keywordRubric.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 justify-end">
+            {p.keywordRubric.map((k) => (
+              <span
+                key={k}
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                  matchedKeywords.has(k)
+                    ? 'border-emerald-700 bg-emerald-950/50 text-emerald-300'
+                    : 'border-cf-border text-slate-500'
+                }`}
+              >
+                {k}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {showMarkscheme && (
-        <div className="bg-cf-accent/10 border border-cf-accent/30 rounded-lg p-4 mb-4 text-xs text-slate-200 leading-relaxed">
-          {p.markscheme}
+      {!submitted ? (
+        <div className="flex flex-col items-end gap-1.5">
+          {!meetsWordGate && (
+            <p className="text-xs text-amber-400">Write at least {p.minWords} words to unlock self-scoring.</p>
+          )}
+          <button
+            type="button"
+            disabled={!meetsWordGate}
+            onClick={() => setSubmitted(true)}
+            className="px-5 py-2.5 bg-cf-accent hover:opacity-90 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-black font-semibold rounded transition text-sm"
+          >
+            Submit for Self-Score
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowExemplar((s) => !s)}
+            className="text-xs font-semibold text-cf-accent hover:opacity-80 transition mb-3"
+          >
+            {showExemplar ? 'Hide' : 'Show'} Model Markscheme &amp; Exemplar Answer
+          </button>
+
+          {showExemplar && (
+            <div className="space-y-3 mb-4">
+              <div className="bg-cf-accent/10 border border-cf-accent/30 rounded-lg p-4 text-xs text-slate-200 leading-relaxed">
+                <p className="text-[10px] uppercase tracking-wider text-cf-accent font-semibold mb-1">Markscheme</p>
+                {p.markscheme}
+              </div>
+              <div className="bg-cf-bg border border-cf-border rounded-lg p-4 text-xs text-slate-300 leading-relaxed">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Exemplar Answer</p>
+                {p.exemplar}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500">Self-score against the markscheme:</span>
+            <div className="flex gap-1.5">
+              {Array.from({ length: totalMarks + 1 }, (_, m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => handleSelfScore(m)}
+                  className="w-9 h-9 rounded-full text-xs font-bold border border-cf-border bg-cf-bg text-slate-300 hover:border-cf-accent hover:text-cf-accent transition"
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
-
-      <div className="flex justify-end">
-        <button
-          onClick={handleNext}
-          className="px-5 py-2.5 bg-cf-accent hover:opacity-90 text-black font-semibold rounded transition text-sm"
-        >
-          {idx + 1 < prompts.length ? 'Next Prompt' : 'Finish'}
-        </button>
-      </div>
     </div>
   );
 }

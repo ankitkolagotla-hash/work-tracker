@@ -4,6 +4,7 @@ import { useAssessmentStore } from '../store/useAssessmentStore';
 import {
   REGISTERED_COURSES,
   AssessmentType,
+  AssessmentDifficulty,
   StudyPacing,
   DayOfWeek,
   DAYS_OF_WEEK,
@@ -22,6 +23,8 @@ const PREP_TIME_PRESETS: { label: string; minutes: number }[] = [
   { label: '3+ hrs', minutes: 180 },
 ];
 
+const DIFFICULTY_OPTIONS: AssessmentDifficulty[] = ['Easy', 'Medium', 'Hard'];
+
 const DAY_ABBR: Record<DayOfWeek, string> = {
   Monday: 'M',
   Tuesday: 'T',
@@ -39,6 +42,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
   const [type, setType] = useState<AssessmentType>('Quiz');
   const [dueDate, setDueDate] = useState('');
   const [points, setPoints] = useState(35);
+  const [difficulty, setDifficulty] = useState<AssessmentDifficulty>('Medium');
   const [rawNotes, setRawNotes] = useState('');
   const [totalPrepTimeMinutes, setTotalPrepTimeMinutes] = useState(60);
   const [studySessionPacing, setStudySessionPacing] = useState<StudyPacing>('25m Pomodoro');
@@ -67,6 +71,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
     setTotalPrepTimeMinutes(60);
     setStudySessionPacing('25m Pomodoro');
     setTargetStudyDays([]);
+    setDifficulty('Medium');
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -86,6 +91,7 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
       unitsCovered: ['Direct Notes Ingest'],
       dueDate: dueISO,
       status: 'Upcoming',
+      difficulty,
       points: Number(points),
       pastedMaterials: rawNotes,
       totalPrepTimeMinutes,
@@ -163,6 +169,25 @@ export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => vo
                 className="w-full bg-cf-bg border border-cf-border rounded px-3 py-2 text-sm text-white focus:outline-cf-accent"
                 min={0}
               />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Difficulty</label>
+              <div className="flex gap-1.5">
+                {DIFFICULTY_OPTIONS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    className={`flex-1 px-2 py-2 rounded text-xs font-semibold border transition ${
+                      difficulty === d
+                        ? 'bg-cf-accent text-black border-cf-accent'
+                        : 'bg-cf-bg border-cf-border text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

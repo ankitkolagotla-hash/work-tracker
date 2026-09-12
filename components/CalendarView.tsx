@@ -14,7 +14,7 @@ import {
   isSaturday,
   toDateOnly,
 } from '../lib/date';
-import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap } from 'lucide-react';
+import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap, CheckCircle2 } from 'lucide-react';
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
 
@@ -62,7 +62,7 @@ export const CalendarView: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [monthIndex, setMonthIndex] = useState<8 | 9>(8); // 8 = September, 9 = October
 
-  const { assessments, studyLogs, verifiedBlocks, toggleBlockVerified } = useAssessmentStore();
+  const { assessments, studyLogs, verifiedBlocks, toggleBlockVerified, toggleTaskComplete } = useAssessmentStore();
 
   return (
     <div className="bg-cf-card border border-cf-border rounded-xl p-6 text-cf-text">
@@ -93,11 +93,19 @@ export const CalendarView: React.FC = () => {
           assessments={assessments}
           verifiedBlocks={verifiedBlocks}
           onToggle={toggleBlockVerified}
+          onToggleComplete={toggleTaskComplete}
         />
       )}
-      {viewMode === 'weekly' && <WeeklyView assessments={assessments} studyLogs={studyLogs} />}
+      {viewMode === 'weekly' && (
+        <WeeklyView assessments={assessments} studyLogs={studyLogs} onToggleComplete={toggleTaskComplete} />
+      )}
       {viewMode === 'monthly' && (
-        <MonthlyView assessments={assessments} monthIndex={monthIndex} setMonthIndex={setMonthIndex} />
+        <MonthlyView
+          assessments={assessments}
+          monthIndex={monthIndex}
+          setMonthIndex={setMonthIndex}
+          onToggleComplete={toggleTaskComplete}
+        />
       )}
     </div>
   );
@@ -111,10 +119,12 @@ function DailyView({
   assessments,
   verifiedBlocks,
   onToggle,
+  onToggleComplete,
 }: {
   assessments: Assessment[];
   verifiedBlocks: string[];
   onToggle: (key: string) => void;
+  onToggleComplete: (id: string) => void;
 }) {
   const todaysAssessments = assessments.filter((a) => toDateOnly(a.dueDate) === BASELINE_DATE_STR);
   const upcoming = assessments
@@ -136,13 +146,17 @@ function DailyView({
           {todaysAssessments.map((a) => {
             const course = courseFor(a.courseId);
             return (
-              <span
+              <button
                 key={a.id}
-                className="text-[11px] font-semibold px-2 py-1 rounded border"
+                onClick={() => onToggleComplete(a.id)}
+                className={`flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded border transition ${
+                  a.status === 'Completed' ? 'line-through opacity-60' : ''
+                }`}
                 style={{ color: course?.color, borderColor: `${course?.color}40`, backgroundColor: `${course?.color}10` }}
               >
+                <CheckCircle2 className="w-3 h-3 shrink-0" />
                 Due today: {a.title}
-              </span>
+              </button>
             );
           })}
         </div>
@@ -201,7 +215,15 @@ function DailyView({
   );
 }
 
-function WeeklyView({ assessments, studyLogs }: { assessments: Assessment[]; studyLogs: ReturnType<typeof useAssessmentStore.getState>['studyLogs'] }) {
+function WeeklyView({
+  assessments,
+  studyLogs,
+  onToggleComplete,
+}: {
+  assessments: Assessment[];
+  studyLogs: ReturnType<typeof useAssessmentStore.getState>['studyLogs'];
+  onToggleComplete: (id: string) => void;
+}) {
   const weekDays = useMemo(() => buildWeekDays(BASELINE_DATE_STR), []);
   const lastDay = weekDays[weekDays.length - 1];
 
@@ -235,14 +257,18 @@ function WeeklyView({ assessments, studyLogs }: { assessments: Assessment[]; stu
                 {dueToday.map((a) => {
                   const course = courseFor(a.courseId);
                   return (
-                    <div
+                    <button
                       key={a.id}
-                      className="text-[10px] font-semibold px-1.5 py-1 rounded truncate"
+                      onClick={() => onToggleComplete(a.id)}
+                      className={`w-full flex items-center gap-1 text-[10px] font-semibold px-1.5 py-1 rounded truncate transition ${
+                        a.status === 'Completed' ? 'line-through opacity-60' : ''
+                      }`}
                       style={{ color: course?.color, backgroundColor: `${course?.color}15` }}
                       title={a.title}
                     >
-                      {a.title}
-                    </div>
+                      <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{a.title}</span>
+                    </button>
                   );
                 })}
                 {dueToday.length === 0 && <span className="text-[10px] text-cf-text-muted">No deadlines</span>}
@@ -276,10 +302,12 @@ function MonthlyView({
   assessments,
   monthIndex,
   setMonthIndex,
+  onToggleComplete,
 }: {
   assessments: Assessment[];
   monthIndex: 8 | 9;
   setMonthIndex: (m: 8 | 9) => void;
+  onToggleComplete: (id: string) => void;
 }) {
   const cells = useMemo(() => buildMonthGrid(2026, monthIndex), [monthIndex]);
   const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -342,14 +370,17 @@ function MonthlyView({
               {dueThatDay.map((a) => {
                 const course = courseFor(a.courseId);
                 return (
-                  <span
+                  <button
                     key={a.id}
-                    className="text-[9px] font-semibold rounded px-1 py-0.5 truncate"
+                    onClick={() => onToggleComplete(a.id)}
+                    className={`w-full text-left text-[9px] font-semibold rounded px-1 py-0.5 truncate transition ${
+                      a.status === 'Completed' ? 'line-through opacity-60' : ''
+                    }`}
                     style={{ color: course?.color, backgroundColor: `${course?.color}18` }}
                     title={a.title}
                   >
                     {a.title}
-                  </span>
+                  </button>
                 );
               })}
             </div>

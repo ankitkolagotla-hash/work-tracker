@@ -1,4 +1,4 @@
-export type ThemeId = 'obsidian-slate' | 'pure-oled' | 'midnight-navy' | 'cyberpunk-void';
+export type ThemeId = 'obsidian-slate' | 'pure-oled' | 'midnight-navy' | 'cyberpunk-void' | 'nord-frosted' | 'forest-emerald';
 export type AccentId = 'cyan' | 'emerald' | 'amber' | 'rose' | 'violet';
 
 export interface ThemeTokens {
@@ -28,7 +28,7 @@ export const THEME_PRESETS: ThemePreset[] = [
   },
   {
     id: 'pure-oled',
-    name: 'Pure OLED Black',
+    name: 'Pure OLED Pitch',
     description: 'True black background, pitch cards',
     swatch: '#000000',
     tokens: { bg: '0 0 0', card: '12 12 12', border: '32 32 32', text: '245 245 245', textMuted: '150 150 150' },
@@ -46,6 +46,20 @@ export const THEME_PRESETS: ThemePreset[] = [
     description: 'Deep twilight purple, neon accents',
     swatch: '#0D0814',
     tokens: { bg: '13 8 20', card: '24 15 36', border: '58 34 87', text: '237 233 254', textMuted: '168 143 196' },
+  },
+  {
+    id: 'nord-frosted',
+    name: 'Nord Frosted',
+    description: 'Cool slate-blue, frosted glass feel',
+    swatch: '#2E3440',
+    tokens: { bg: '46 52 64', card: '59 66 82', border: '76 86 106', text: '236 239 244', textMuted: '216 222 233' },
+  },
+  {
+    id: 'forest-emerald',
+    name: 'Forest Emerald',
+    description: 'Deep forest green, quiet focus',
+    swatch: '#0B1410',
+    tokens: { bg: '11 20 16', card: '20 32 25', border: '36 53 44', text: '229 243 234', textMuted: '156 184 168' },
   },
 ];
 

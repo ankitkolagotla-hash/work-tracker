@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   Assessment,
+  AssessmentDifficulty,
   StudySessionLog,
   StudyMethod,
   StudyPacing,
@@ -33,9 +34,11 @@ interface AssessmentState {
   cancelSession: () => void;
   deleteAssessment: (id: string) => void;
   toggleBlockVerified: (key: string) => void;
+  toggleTaskComplete: (id: string) => void;
 }
 
 const DEFAULT_PLAN = {
+  difficulty: 'Medium' as AssessmentDifficulty,
   totalPrepTimeMinutes: 60,
   studySessionPacing: '25m Pomodoro' as StudyPacing,
   targetStudyDays: [] as DayOfWeek[],
@@ -223,6 +226,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           readinessIndex: 0,
           pastedMaterials: BIO_QUIZ_MATERIALS,
           studyPack: generateStudyPack(BIO_QUIZ_MATERIALS),
+          difficulty: 'Medium',
           totalPrepTimeMinutes: 90,
           studySessionPacing: '50m Ultradian',
           targetStudyDays: ['Saturday', 'Sunday'],
@@ -297,6 +301,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           readinessIndex: 0,
           pastedMaterials: '',
           studyPack: EMPTY_STUDY_PACK,
+          difficulty: 'Hard',
           totalPrepTimeMinutes: 120,
           studySessionPacing: '50m Ultradian',
           targetStudyDays: [],
@@ -341,6 +346,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           readinessIndex: 0,
           pastedMaterials: '',
           studyPack: EMPTY_STUDY_PACK,
+          difficulty: 'Hard',
           totalPrepTimeMinutes: 120,
           studySessionPacing: '50m Ultradian',
           targetStudyDays: [],
@@ -467,7 +473,7 @@ export const useAssessmentStore = create<AssessmentState>()(
             studyLogs: [newLog, ...state.studyLogs],
             assessments: state.assessments.map((a) =>
               a.id === assessmentId
-                ? { ...a, readinessIndex, status: readinessIndex >= 100 ? 'Completed' : 'Studying' }
+                ? { ...a, readinessIndex, status: readinessIndex >= 100 ? 'Completed' : 'In Progress' }
                 : a
             ),
             activeSession: hadSession
@@ -494,10 +500,20 @@ export const useAssessmentStore = create<AssessmentState>()(
             : [...state.verifiedBlocks, key],
         }));
       },
+
+      // Instant complete toggle usable directly from Daily/Weekly/Monthly views,
+      // independent of the study workspace's own readiness-based status changes.
+      toggleTaskComplete: (id) => {
+        set((state) => ({
+          assessments: state.assessments.map((a) =>
+            a.id === id ? { ...a, status: a.status === 'Completed' ? 'Upcoming' : 'Completed' } : a
+          ),
+        }));
+      },
     }),
     {
       name: 'chronoflow-store',
-      version: 4,
+      version: 5,
     }
   )
 );
