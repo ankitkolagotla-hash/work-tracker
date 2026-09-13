@@ -17,6 +17,7 @@ import {
 import { generateAdaptiveDrillSet } from '../lib/actDrills';
 import { dateStrToTimestamp, formatFullDate } from '../lib/date';
 import { recognizeImageText, gradeAnswers } from '../lib/actOcr';
+import { useSystemDate } from '../store/useSystemDateStore';
 import { predictSectionScores, predictComposite } from '../lib/actPredictor';
 import { classifyQuestionTaxonomy } from '../lib/actTaxonomy';
 import { putMedia } from '../lib/mediaStorage';
@@ -37,13 +38,14 @@ import {
   X,
 } from 'lucide-react';
 
-function daysUntil(dateStr: string): number {
-  const now = dateStrToTimestamp('2026-09-11');
+function daysUntil(dateStr: string, todayStr: string): number {
+  const now = dateStrToTimestamp(todayStr);
   const target = dateStrToTimestamp(dateStr);
   return Math.round((target - now) / 86400000);
 }
 
 export const ACTMasteryHub: React.FC = () => {
+  const today = useSystemDate();
   const {
     actSectionScores,
     actErrorLog,
@@ -67,7 +69,7 @@ export const ACTMasteryHub: React.FC = () => {
     return Math.round(sum / actSectionScores.length);
   }, [actSectionScores]);
 
-  const daysLeft = daysUntil(ACT_TARGET_DATE);
+  const daysLeft = daysUntil(ACT_TARGET_DATE, today);
 
   const launchDrills = () => {
     setDrillSet(generateAdaptiveDrillSet(actErrorLog, 5));
@@ -162,7 +164,7 @@ export const ACTMasteryHub: React.FC = () => {
         <h3 className="text-sm font-bold text-white mb-4">Saturday Full-Length Simulation Tracker</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {actMockExams.map((exam) => {
-            const remaining = daysUntil(exam.date);
+            const remaining = daysUntil(exam.date, today);
             return (
               <button
                 key={exam.id}
@@ -202,6 +204,7 @@ function ErrorLogPanel({
   logACTError: (entry: Omit<import('../types/lifeOs').ACTErrorLogEntry, 'id'>) => void;
   deleteACTError: (id: string) => void;
 }) {
+  const today = useSystemDate();
   const [section, setSection] = useState<ACTSection>('English');
   const [questionType, setQuestionType] = useState('');
   const [rootCause, setRootCause] = useState<ACTRootCause>('Content Gap');
@@ -211,7 +214,7 @@ function ErrorLogPanel({
     e.preventDefault();
     if (!questionType.trim()) return;
     logACTError({
-      testDate: new Date().toISOString().slice(0, 10),
+      testDate: today,
       section,
       questionType: questionType.trim(),
       rootCause,
@@ -411,6 +414,7 @@ function ScorePredictorPanel() {
 }
 
 function ImageIntakePanel() {
+  const today = useSystemDate();
   const logACTError = useLifeOSStore((s) => s.logACTError);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [keyFile, setKeyFile] = useState<File | null>(null);
@@ -457,7 +461,7 @@ function ImageIntakePanel() {
       .filter((item) => effectiveCorrect(item) === false)
       .forEach((item) => {
         logACTError({
-          testDate: new Date().toISOString().slice(0, 10),
+          testDate: today,
           section: loggingSection,
           questionType: detectedTag && detectedTag !== 'Unclassified' ? detectedTag : `Q${item.questionNumber} (OCR intake)`,
           rootCause: 'Content Gap',
@@ -618,6 +622,7 @@ function ImageDropZone({ label, file, onFile }: { label: string; file: File | nu
 }
 
 function StudyHoursLogPanel() {
+  const today = useSystemDate();
   const { actSectionSessions, addACTSectionSession, deleteACTSectionSession } = useLifeOSStore();
   const [section, setSection] = useState<ACTLogSection>('English');
   const [minutesSpent, setMinutesSpent] = useState(30);
@@ -633,7 +638,7 @@ function StudyHoursLogPanel() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addACTSectionSession({
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       section,
       minutesSpent,
       questionsAttempted,

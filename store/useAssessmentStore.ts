@@ -11,6 +11,7 @@ import {
 } from '../types/assessment';
 import { generateStudyPack, EMPTY_STUDY_PACK } from '../lib/studyGenerator';
 import { isPast } from '../lib/date';
+import { useSystemDateStore, resolveSystemDate } from './useSystemDateStore';
 
 interface AssessmentState {
   assessments: Assessment[];
@@ -23,6 +24,8 @@ interface AssessmentState {
   };
   canvasFeedUrl: string;
   verifiedBlocks: string[];
+  /** IDs pulled ahead into today's active sprint queue — a work-ahead buffer that never touches the real dueDate. */
+  queuedAheadIds: string[];
 
   addAssessment: (data: Omit<Assessment, 'id' | 'readinessIndex' | 'studyPack'>) => void;
   importCanvasEvents: (events: Assessment[]) => void;
@@ -35,6 +38,7 @@ interface AssessmentState {
   deleteAssessment: (id: string) => void;
   toggleBlockVerified: (key: string) => void;
   toggleTaskComplete: (id: string) => void;
+  toggleQueuedAhead: (id: string) => void;
 }
 
 const DEFAULT_PLAN = {
@@ -505,9 +509,24 @@ export const useAssessmentStore = create<AssessmentState>()(
       // independent of the study workspace's own readiness-based status changes.
       toggleTaskComplete: (id) => {
         set((state) => ({
-          assessments: state.assessments.map((a) =>
-            a.id === id ? { ...a, status: a.status === 'Completed' ? 'Upcoming' : 'Completed' } : a
-          ),
+          assessments: state.assessments.map((a) => {
+            if (a.id !== id) return a;
+            const nowCompleting = a.status !== 'Completed';
+            return {
+              ...a,
+              status: nowCompleting ? 'Completed' : 'Upcoming',
+              completedAt: nowCompleting ? resolveSystemDate(useSystemDateStore.getState()) : null,
+            };
+          }),
+        }));
+      },
+
+      queuedAheadIds: [],
+      toggleQueuedAhead: (id) => {
+        set((state) => ({
+          queuedAheadIds: state.queuedAheadIds.includes(id)
+            ? state.queuedAheadIds.filter((qid) => qid !== id)
+            : [...state.queuedAheadIds, id],
         }));
       },
     }),
@@ -528,6 +547,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           activeSession: p.activeSession ?? currentState.activeSession,
           canvasFeedUrl: p.canvasFeedUrl ?? currentState.canvasFeedUrl,
           verifiedBlocks: p.verifiedBlocks ?? currentState.verifiedBlocks,
+          queuedAheadIds: p.queuedAheadIds ?? currentState.queuedAheadIds,
         };
       },
     }

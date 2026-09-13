@@ -3,8 +3,6 @@ import React, { useMemo, useState } from 'react';
 import { useAssessmentStore } from '../store/useAssessmentStore';
 import { Assessment, REGISTERED_COURSES } from '../types/assessment';
 import {
-  BASELINE_DATE_STR,
-  BASELINE_LABEL,
   MONTH_NAMES,
   buildMonthGrid,
   buildWeekDays,
@@ -15,7 +13,9 @@ import {
   toDateOnly,
 } from '../lib/date';
 import { useLifeOSStore } from '../store/useLifeOSStore';
+import { useSystemDate } from '../store/useSystemDateStore';
 import { downloadICS } from '../lib/icsExport';
+import { CalendarSyncDropZone } from './CalendarSyncDropZone';
 import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap, CheckCircle2, CalendarPlus } from 'lucide-react';
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
@@ -61,8 +61,9 @@ function buildDailyBlocks(startHour: number, startMinute: number, cycles: number
 const DAILY_BLOCKS = buildDailyBlocks(15, 30, 6);
 
 export const CalendarView: React.FC = () => {
+  const systemDate = useSystemDate();
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
-  const [monthIndex, setMonthIndex] = useState<8 | 9>(8); // 8 = September, 9 = October
+  const [monthIndex, setMonthIndex] = useState<8 | 9>(() => (systemDate.slice(5, 7) === '10' ? 9 : 8));
 
   const { assessments, studyLogs, verifiedBlocks, toggleBlockVerified, toggleTaskComplete } = useAssessmentStore();
   const actMockExams = useLifeOSStore((s) => s.actMockExams);
@@ -74,7 +75,7 @@ export const CalendarView: React.FC = () => {
           <h2 className="text-lg font-bold text-cf-text flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-cf-accent" /> Study Calendar
           </h2>
-          <p className="text-xs text-cf-text-muted mt-0.5">System date: {BASELINE_LABEL}</p>
+          <p className="text-xs text-cf-text-muted mt-0.5">System date: {formatFullDate(systemDate)}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -99,8 +100,11 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
+      <CalendarSyncDropZone />
+
       {viewMode === 'daily' && (
         <DailyView
+          today={systemDate}
           assessments={assessments}
           verifiedBlocks={verifiedBlocks}
           onToggle={toggleBlockVerified}
@@ -108,10 +112,11 @@ export const CalendarView: React.FC = () => {
         />
       )}
       {viewMode === 'weekly' && (
-        <WeeklyView assessments={assessments} studyLogs={studyLogs} onToggleComplete={toggleTaskComplete} />
+        <WeeklyView today={systemDate} assessments={assessments} studyLogs={studyLogs} onToggleComplete={toggleTaskComplete} />
       )}
       {viewMode === 'monthly' && (
         <MonthlyView
+          today={systemDate}
           assessments={assessments}
           monthIndex={monthIndex}
           setMonthIndex={setMonthIndex}
@@ -127,27 +132,29 @@ function courseFor(courseId: string) {
 }
 
 function DailyView({
+  today,
   assessments,
   verifiedBlocks,
   onToggle,
   onToggleComplete,
 }: {
+  today: string;
   assessments: Assessment[];
   verifiedBlocks: string[];
   onToggle: (key: string) => void;
   onToggleComplete: (id: string) => void;
 }) {
-  const todaysAssessments = assessments.filter((a) => toDateOnly(a.dueDate) === BASELINE_DATE_STR);
+  const todaysAssessments = assessments.filter((a) => toDateOnly(a.dueDate) === today);
   const upcoming = assessments
     .filter((a) => a.status !== 'Completed')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const focusBlocks = DAILY_BLOCKS.filter((b) => b.type === 'focus');
-  const verifiedFocusCount = focusBlocks.filter((b) => verifiedBlocks.includes(`${BASELINE_DATE_STR}::${b.id}`)).length;
+  const verifiedFocusCount = focusBlocks.filter((b) => verifiedBlocks.includes(`${today}::${b.id}`)).length;
 
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <p className="text-sm text-cf-text font-semibold">{formatFullDate(BASELINE_DATE_STR)}</p>
+        <p className="text-sm text-cf-text font-semibold">{formatFullDate(today)}</p>
         <span className="text-xs text-cf-text-muted font-mono">{verifiedFocusCount} / {focusBlocks.length} verified</span>
       </div>
       <p className="text-xs text-cf-text-muted mb-4">After-school to shutdown timeline — 50/10 focus blocks.</p>
@@ -175,7 +182,7 @@ function DailyView({
 
       <div className="space-y-2">
         {DAILY_BLOCKS.map((block) => {
-          const key = `${BASELINE_DATE_STR}::${block.id}`;
+          const key = `${today}::${block.id}`;
           const verified = verifiedBlocks.includes(key);
           const sprintAssessment =
             block.type === 'focus' && upcoming.length > 0
@@ -227,15 +234,17 @@ function DailyView({
 }
 
 function WeeklyView({
+  today,
   assessments,
   studyLogs,
   onToggleComplete,
 }: {
+  today: string;
   assessments: Assessment[];
   studyLogs: ReturnType<typeof useAssessmentStore.getState>['studyLogs'];
   onToggleComplete: (id: string) => void;
 }) {
-  const weekDays = useMemo(() => buildWeekDays(BASELINE_DATE_STR), []);
+  const weekDays = useMemo(() => buildWeekDays(today), [today]);
   const lastDay = weekDays[weekDays.length - 1];
 
   const upcomingBeyondWeek = assessments
@@ -247,7 +256,7 @@ function WeeklyView({
     <div>
       <div className="grid grid-cols-7 gap-2 mb-4">
         {weekDays.map((day) => {
-          const isToday = day === BASELINE_DATE_STR;
+          const isToday = day === today;
           const dueToday = assessments.filter((a) => toDateOnly(a.dueDate) === day);
           const studiedToday = studyLogs.some((log) => toDateOnly(log.timestamp) === day);
 
@@ -310,11 +319,13 @@ function WeeklyView({
 }
 
 function MonthlyView({
+  today,
   assessments,
   monthIndex,
   setMonthIndex,
   onToggleComplete,
 }: {
+  today: string;
   assessments: Assessment[];
   monthIndex: 8 | 9;
   setMonthIndex: (m: 8 | 9) => void;
@@ -359,7 +370,7 @@ function MonthlyView({
         {cells.map((cell, i) => {
           if (!cell.dateStr) return <div key={i} className="min-h-[80px]" />;
 
-          const isToday = cell.dateStr === BASELINE_DATE_STR;
+          const isToday = cell.dateStr === today;
           const dueThatDay = assessments.filter((a) => toDateOnly(a.dueDate) === cell.dateStr);
           const act = isSaturday(cell.dateStr);
 

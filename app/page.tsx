@@ -18,7 +18,12 @@ import { CollegeOutreachHub } from '../components/CollegeOutreachHub';
 import { AthleticsHub } from '../components/AthleticsHub';
 import { BackupRestoreModal } from '../components/BackupRestoreModal';
 import { FocusModeOverlay } from '../components/FocusModeOverlay';
-import { BASELINE_LABEL, isUpcoming, isPast } from '../lib/date';
+import { SystemDateControl } from '../components/SystemDateControl';
+import { CalendarSyncDropZone } from '../components/CalendarSyncDropZone';
+import { WorkAheadQueue } from '../components/WorkAheadQueue';
+import { LifeAnalyticsDashboard } from '../components/LifeAnalyticsDashboard';
+import { useSystemDate } from '../store/useSystemDateStore';
+import { formatFullDate, isUpcoming, isPast } from '../lib/date';
 import {
   Plus,
   RefreshCw,
@@ -52,6 +57,7 @@ const NAV_TABS: { id: NavTab; label: string; icon: React.ElementType }[] = [
 
 export default function Home() {
   const { assessments, canvasFeedUrl, importCanvasEvents, deleteAssessment } = useAssessmentStore();
+  const systemDate = useSystemDate();
   const [activeTab, setActiveTab] = useState<NavTab>('daily-intel');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
@@ -87,10 +93,10 @@ export default function Home() {
   }
 
   const upcomingAssessments = assessments
-    .filter((a) => isUpcoming(a.dueDate))
+    .filter((a) => isUpcoming(a.dueDate, systemDate))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const pastAssessments = assessments
-    .filter((a) => isPast(a.dueDate))
+    .filter((a) => isPast(a.dueDate, systemDate))
     .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
 
   return (
@@ -101,9 +107,9 @@ export default function Home() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white font-mono">CHRONOFLOW OS</h1>
             <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">Life Operating System &amp; Focus Hub</p>
-            <p className="text-[11px] text-cf-accent mt-1 font-mono">System Date: {BASELINE_LABEL}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <SystemDateControl />
             <ThemeSwitcher />
             <button
               onClick={() => setIsBackupModalOpen(true)}
@@ -154,7 +160,10 @@ export default function Home() {
         {activeTab === 'daily-intel' && (
           <div className="space-y-8">
             <DailyIntelBriefing />
+            <CalendarSyncDropZone />
+            <WorkAheadQueue />
             <SprintLauncher />
+            <LifeAnalyticsDashboard />
             <NightSleepRecall />
             <StudyStreakTracker />
           </div>
@@ -184,7 +193,7 @@ export default function Home() {
                 <Archive className="w-5 h-5 text-slate-500" /> Past Assessments
               </h2>
               {pastAssessments.length === 0 ? (
-                <p className="text-xs text-slate-500">Nothing here yet — past assessments will appear once their due date is behind {BASELINE_LABEL}.</p>
+                <p className="text-xs text-slate-500">Nothing here yet — past assessments will appear once their due date is behind {formatFullDate(systemDate)}.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {pastAssessments.map((a) => (

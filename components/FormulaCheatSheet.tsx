@@ -71,6 +71,16 @@ const ENGLISH_SECTIONS: RefSection[] = [
     ],
   },
   {
+    id: 'apostrophes',
+    heading: 'Apostrophes',
+    items: [
+      { term: 'Possessive, singular', detail: 'Add \'s: "the team\'s captain" — even for names ending in s: "Chris\'s goal."' },
+      { term: 'Possessive, plural', detail: 'Add just an apostrophe after the s: "the players\' locker room."' },
+      { term: 'Contraction vs. possessive', detail: '"it\'s" = it is/it has; "its" = possessive. Never "it\'s" for possession.' },
+      { term: 'No apostrophe for plain plurals', detail: '"1990s", "the Joneses" — not "1990\'s" or "the Jones\'s" for a simple plural.' },
+    ],
+  },
+  {
     id: 'modifiers',
     heading: 'Modifier Placement',
     items: [

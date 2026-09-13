@@ -3,7 +3,8 @@ import React, { useMemo, useState } from 'react';
 import { useAssessmentStore } from '../store/useAssessmentStore';
 import { useLifeOSStore } from '../store/useLifeOSStore';
 import { REGISTERED_COURSES, DrillCard } from '../types/assessment';
-import { BASELINE_DATE_STR, addDays, toDateOnly } from '../lib/date';
+import { useSystemDate } from '../store/useSystemDateStore';
+import { addDays, toDateOnly } from '../lib/date';
 import { Moon, CheckCircle2, RotateCcw, Sparkles } from 'lucide-react';
 
 const RECALL_DECK_SIZE = 12;
@@ -29,6 +30,7 @@ interface DeckCard {
  * to reinforce material right before sleep.
  */
 export const NightSleepRecall: React.FC = () => {
+  const today = useSystemDate();
   const assessments = useAssessmentStore((s) => s.assessments);
   const studyLogs = useAssessmentStore((s) => s.studyLogs);
   const logStudySession = useAssessmentStore((s) => s.logStudySession);
@@ -43,38 +45,38 @@ export const NightSleepRecall: React.FC = () => {
   const [results, setResults] = useState<Record<string, { correct: number; attempted: number }>>({});
   const [logged, setLogged] = useState(false);
 
-  const tomorrow = addDays(BASELINE_DATE_STR, 1);
+  const tomorrow = addDays(today, 1);
 
   const completedToday = useMemo(
-    () => assessments.filter((a) => toDateOnly(a.dueDate) === BASELINE_DATE_STR && a.status === 'Completed').length,
-    [assessments]
+    () => assessments.filter((a) => toDateOnly(a.dueDate) === today && a.status === 'Completed').length,
+    [assessments, today]
   );
   const academicMinutesToday = useMemo(
-    () => studyLogs.filter((l) => toDateOnly(l.timestamp) === BASELINE_DATE_STR).reduce((acc, l) => acc + l.durationMinutes, 0),
-    [studyLogs]
+    () => studyLogs.filter((l) => toDateOnly(l.timestamp) === today).reduce((acc, l) => acc + l.durationMinutes, 0),
+    [studyLogs, today]
   );
   const actMinutesToday = useMemo(
-    () => actSectionSessions.filter((s) => s.date === BASELINE_DATE_STR).reduce((acc, s) => acc + s.minutesSpent, 0),
-    [actSectionSessions]
+    () => actSectionSessions.filter((s) => s.date === today).reduce((acc, s) => acc + s.minutesSpent, 0),
+    [actSectionSessions, today]
   );
   const trainingMinutesToday = useMemo(
-    () => trainingLogs.filter((t) => t.date === BASELINE_DATE_STR).reduce((acc, t) => acc + t.durationMinutes, 0),
-    [trainingLogs]
+    () => trainingLogs.filter((t) => t.date === today).reduce((acc, t) => acc + t.durationMinutes, 0),
+    [trainingLogs, today]
   );
   const outreachToday = useMemo(
-    () => coldEmailLogs.filter((l) => l.sentDate && toDateOnly(l.sentDate) === BASELINE_DATE_STR).length,
-    [coldEmailLogs]
+    () => coldEmailLogs.filter((l) => l.sentDate && toDateOnly(l.sentDate) === today).length,
+    [coldEmailLogs, today]
   );
 
   const activeModules = useMemo(
     () =>
       assessments.filter(
         (a) =>
-          (toDateOnly(a.dueDate) === BASELINE_DATE_STR || toDateOnly(a.dueDate) === tomorrow) &&
+          (toDateOnly(a.dueDate) === today || toDateOnly(a.dueDate) === tomorrow) &&
           a.status !== 'Completed' &&
           a.studyPack.flashcards.length > 0
       ),
-    [assessments, tomorrow]
+    [assessments, today, tomorrow]
   );
 
   const beginRecall = () => {

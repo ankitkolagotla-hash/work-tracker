@@ -38,6 +38,9 @@ const VAGUE_ATTRIBUTION_RE =
 
 const NEGATIVE_PARALLELISM_RE = /\bnot only\b[^.?!]{0,80}\bbut also\b/gi;
 
+const EDITORIALIZING_RE =
+  /\b(it'?s worth noting that|interestingly,?|notably,?|importantly,?|crucially,?|unsurprisingly,?|it should be noted that)\b/gi;
+
 const RULE_OF_THREE_RE = /\b([A-Za-z]+),\s+([A-Za-z]+),\s+(?:and|or)\s+([A-Za-z]+)\b/g;
 
 const STOCK_REPLACEMENTS: [RegExp, string][] = [
@@ -75,6 +78,15 @@ function auditText(text: string): AuditResult {
       pattern: 'Vague attribution',
       matches: [...new Set(attributionMatches)],
       recommendation: 'Name the specific study, author, or source instead of an unnamed authority.',
+    });
+  }
+
+  const editorializingMatches = text.match(EDITORIALIZING_RE);
+  if (editorializingMatches) {
+    findings.push({
+      pattern: 'Editorializing insertion',
+      matches: [...new Set(editorializingMatches)],
+      recommendation: 'Cut the interjection and state the point plainly — let the evidence carry the weight, not the narrator\'s commentary.',
     });
   }
 
@@ -127,6 +139,7 @@ function auditText(text: string): AuditResult {
 function applyStructuralPass(text: string): string {
   let cleaned = text.replace(EM_DASH_RE, ', ');
   cleaned = cleaned.replace(VAGUE_ATTRIBUTION_RE, '');
+  cleaned = cleaned.replace(EDITORIALIZING_RE, '');
   STOCK_REPLACEMENTS.forEach(([re, replacement]) => {
     cleaned = cleaned.replace(re, replacement);
   });

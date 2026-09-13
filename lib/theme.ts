@@ -1,5 +1,13 @@
-export type ThemeId = 'obsidian-slate' | 'pure-oled' | 'midnight-navy' | 'cyberpunk-void' | 'nord-frosted' | 'forest-emerald';
-export type AccentId = 'cyan' | 'emerald' | 'amber' | 'rose' | 'violet';
+export type ThemeId =
+  | 'obsidian-slate'
+  | 'pure-oled'
+  | 'midnight-navy'
+  | 'cyberpunk-void'
+  | 'nord-frosted'
+  | 'forest-emerald'
+  | 'crimson-dark'
+  | 'solarized-void';
+export type AccentId = 'cyan' | 'emerald' | 'amber' | 'rose' | 'violet' | 'silver';
 
 export interface ThemeTokens {
   /** All token values are "R G B" space-separated triplets for use with rgb(var(--x) / <alpha-value>). */
@@ -35,7 +43,7 @@ export const THEME_PRESETS: ThemePreset[] = [
   },
   {
     id: 'midnight-navy',
-    name: 'Midnight Navy',
+    name: 'Midnight Sapphire',
     description: 'Deep sapphire base, cool steel borders',
     swatch: '#0B0F19',
     tokens: { bg: '11 15 25', card: '17 24 39', border: '30 41 59', text: '226 232 240', textMuted: '148 163 184' },
@@ -61,6 +69,20 @@ export const THEME_PRESETS: ThemePreset[] = [
     swatch: '#0B1410',
     tokens: { bg: '11 20 16', card: '20 32 25', border: '36 53 44', text: '229 243 234', textMuted: '156 184 168' },
   },
+  {
+    id: 'crimson-dark',
+    name: 'Crimson Dark',
+    description: 'Near-black maroon, warm accent contrast',
+    swatch: '#1A0E0F',
+    tokens: { bg: '26 14 15', card: '43 20 23', border: '74 35 40', text: '245 230 231', textMuted: '201 160 165' },
+  },
+  {
+    id: 'solarized-void',
+    name: 'Solarized Void',
+    description: 'Solarized Dark, tuned for long sessions',
+    swatch: '#002B36',
+    tokens: { bg: '0 43 54', card: '7 54 66', border: '42 74 84', text: '147 161 161', textMuted: '88 110 117' },
+  },
 ];
 
 export interface AccentPreset {
@@ -77,6 +99,7 @@ export const ACCENT_PRESETS: AccentPreset[] = [
   { id: 'amber', name: 'Sunset Amber', hex: '#F59E0B', rgb: '245 158 11' },
   { id: 'rose', name: 'Rose / Crimson', hex: '#F43F5E', rgb: '244 63 94' },
   { id: 'violet', name: 'Violet / Iris', hex: '#8B5CF6', rgb: '139 92 246' },
+  { id: 'silver', name: 'Titanium Silver', hex: '#CBD5E1', rgb: '203 213 225' },
 ];
 
 export const DEFAULT_THEME: ThemeId = 'obsidian-slate';

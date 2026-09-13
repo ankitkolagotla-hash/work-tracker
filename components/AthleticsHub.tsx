@@ -4,6 +4,7 @@ import { useLifeOSStore } from '../store/useLifeOSStore';
 import { HIGHLIGHT_SKILLS, HighlightSkill, TrainingSessionType } from '../types/lifeOs';
 import { sequenceReel } from '../lib/reelSequencer';
 import { RecruitingCrmView } from './RecruitingCrmView';
+import { useSystemDate } from '../store/useSystemDateStore';
 import { Shirt, Film, Dumbbell, Trash2, Clapperboard, Star } from 'lucide-react';
 
 const TRAINING_TYPES: TrainingSessionType[] = ['Strength', 'Conditioning', 'Technical', 'Recovery'];
@@ -23,6 +24,7 @@ export const AthleticsHub: React.FC = () => {
 };
 
 function MatchLogPanel() {
+  const today = useSystemDate();
   const { matchLogs, addMatchLog, deleteMatchLog } = useLifeOSStore();
   const [opponent, setOpponent] = useState('');
   const [competition, setCompetition] = useState('ECNL');
@@ -36,7 +38,7 @@ function MatchLogPanel() {
     e.preventDefault();
     if (!opponent.trim()) return;
     addMatchLog({
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       opponent: opponent.trim(),
       competition,
       minutesPlayed,
@@ -291,6 +293,7 @@ function ReelSegmentColumn({ title, clips }: { title: string; clips: ReturnType<
 }
 
 function TrainingLogPanel() {
+  const today = useSystemDate();
   const { trainingLogs, addTrainingLog, deleteTrainingLog } = useLifeOSStore();
   const [sessionType, setSessionType] = useState<TrainingSessionType>('Strength');
   const [durationMinutes, setDurationMinutes] = useState(60);
@@ -300,7 +303,7 @@ function TrainingLogPanel() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addTrainingLog({
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       sessionType,
       durationMinutes,
       sorenessLevel,

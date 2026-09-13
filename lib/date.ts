@@ -11,12 +11,17 @@ export function toDateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
 
-export function isUpcoming(dueDateISO: string): boolean {
-  return toDateOnly(dueDateISO) >= BASELINE_DATE_STR;
+/**
+ * `todayStr` defaults to the fixed install baseline for callers that don't
+ * carry the live system date (e.g. one-off parsing utilities) — dashboard
+ * components should pass the live value from useSystemDate() instead.
+ */
+export function isUpcoming(dueDateISO: string, todayStr: string = BASELINE_DATE_STR): boolean {
+  return toDateOnly(dueDateISO) >= todayStr;
 }
 
-export function isPast(dueDateISO: string): boolean {
-  return !isUpcoming(dueDateISO);
+export function isPast(dueDateISO: string, todayStr: string = BASELINE_DATE_STR): boolean {
+  return !isUpcoming(dueDateISO, todayStr);
 }
 
 export function dateStrToTimestamp(dateStr: string): number {

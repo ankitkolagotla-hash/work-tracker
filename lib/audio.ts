@@ -8,7 +8,9 @@ export type AudioPresetId =
   | 'rainy-cafe'
   | 'winter-chill'
   | 'midnight-deep-focus'
+  | 'chill-beats'
   | 'neo-classical-piano'
+  | 'post-rock'
   | 'atmospheric-drone'
   | 'silence';
 
@@ -26,8 +28,10 @@ export const AUDIO_PRESETS: AudioPresetMeta[] = [
   { id: 'pink-noise', name: 'Pink Noise', description: 'Softer, balanced masking noise', category: 'tone' },
   { id: 'rainy-cafe', name: 'Rainy Cafe Lo-Fi', description: 'Soft rain hiss with a warm undertone', category: 'instrumental' },
   { id: 'winter-chill', name: 'Winter Chill Lo-Fi', description: 'Slow minor-key pad, melancholic focus', category: 'instrumental' },
-  { id: 'midnight-deep-focus', name: 'Midnight Deep Focus Lo-Fi', description: 'Low sub-bass drone, sparse and dark', category: 'instrumental' },
+  { id: 'midnight-deep-focus', name: 'Midnight Deep Study Lo-Fi', description: 'Low sub-bass drone, sparse and dark', category: 'instrumental' },
+  { id: 'chill-beats', name: 'Chill Beats Lo-Fi', description: 'Warm rhythmic pad with a soft vinyl-hiss texture', category: 'instrumental' },
   { id: 'neo-classical-piano', name: 'Neo-Classical Piano', description: 'Generative slow arpeggio loop', category: 'instrumental' },
+  { id: 'post-rock', name: 'Minimalist Post-Rock', description: 'Slow-building shimmer, wide filter sweep', category: 'instrumental' },
   { id: 'atmospheric-drone', name: 'Minimalist Atmospheric Drone', description: 'Evolving ambient soundscape', category: 'instrumental' },
   { id: 'silence', name: 'Silence / Optic Flow', description: 'Break timer cue', category: 'tone' },
 ];
@@ -303,8 +307,35 @@ export class FocusAudioEngine {
       return;
     }
 
+    if (presetId === 'chill-beats') {
+      // Warm rhythmic pad plus a soft filtered-noise "vinyl hiss" texture.
+      this.startDrone(ctx, 174.61, [0.35, 0.2, 0.12], 900, 0.15, 250);
+
+      const hissSrc = ctx.createBufferSource();
+      hissSrc.buffer = createWhiteNoiseBuffer(ctx, 4);
+      hissSrc.loop = true;
+      const hissFilter = ctx.createBiquadFilter();
+      hissFilter.type = 'highpass';
+      hissFilter.frequency.value = 4000;
+      const hissGain = ctx.createGain();
+      hissGain.gain.value = 0.05;
+      hissSrc.connect(hissFilter);
+      hissFilter.connect(hissGain);
+      hissGain.connect(this.masterGain);
+      hissSrc.start();
+      this.sources.push(hissSrc);
+      this.managedNodes.push(hissFilter, hissGain);
+      return;
+    }
+
     if (presetId === 'neo-classical-piano') {
       this.scheduleArpeggio(ctx);
+      return;
+    }
+
+    if (presetId === 'post-rock') {
+      // A lower root with a slow, wide filter sweep gives a "building" shimmer feel.
+      this.startDrone(ctx, 98, [0.45, 0.3, 0.24], 600, 0.025, 500);
       return;
     }
 

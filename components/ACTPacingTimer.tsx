@@ -72,6 +72,7 @@ export const ACTPacingTimer: React.FC = () => {
 
       <p className="text-[11px] text-slate-500 mb-4">
         {pacing.questions} questions / {pacing.minutes} minutes — ~{pacing.secondsPerQuestion}s per question
+        {section === 'Math' && ' · 4 answer choices'}
       </p>
 
       <div className="grid grid-cols-2 gap-3 mb-4">

@@ -2,50 +2,54 @@
 import React, { useMemo } from 'react';
 import { useAssessmentStore } from '../store/useAssessmentStore';
 import { useLifeOSStore } from '../store/useLifeOSStore';
+import { useSystemDate } from '../store/useSystemDateStore';
 import { REGISTERED_COURSES } from '../types/assessment';
-import { BASELINE_DATE_STR, toDateOnly } from '../lib/date';
-import { Sunrise, CheckCircle2, Circle, BookOpen, Target, Dumbbell, GraduationCap } from 'lucide-react';
+import { toDateOnly } from '../lib/date';
+import { Sunrise, CheckCircle2, Circle, BookOpen, Target, Dumbbell, GraduationCap, FastForward } from 'lucide-react';
 
 /**
  * The "Daily Intel" morning briefing: everything due or scheduled today,
  * pulled live from each domain's own store, plus a same-day hours breakdown.
- * This intentionally reuses the same BASELINE_DATE_STR "today" concept as
- * CalendarView's Daily view, rather than introducing a second notion of
- * "today" for this widget alone.
+ * "Today" tracks the live system date (see useSystemDateStore), and also
+ * folds in any tasks pulled ahead via the Work Ahead buffer — those are
+ * visually tagged since their real due date is still in the future.
  */
 export const DailyIntelBriefing: React.FC = () => {
+  const today = useSystemDate();
   const assessments = useAssessmentStore((s) => s.assessments);
   const studyLogs = useAssessmentStore((s) => s.studyLogs);
+  const queuedAheadIds = useAssessmentStore((s) => s.queuedAheadIds);
   const actSectionSessions = useLifeOSStore((s) => s.actSectionSessions);
   const trainingLogs = useLifeOSStore((s) => s.trainingLogs);
   const coldEmailLogs = useLifeOSStore((s) => s.coldEmailLogs);
   const targetUniversities = useLifeOSStore((s) => s.targetUniversities);
   const toggleTaskComplete = useAssessmentStore((s) => s.toggleTaskComplete);
 
-  const todaysAssessments = useMemo(
-    () => assessments.filter((a) => toDateOnly(a.dueDate) === BASELINE_DATE_STR).sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    [assessments]
-  );
+  const todaysAssessments = useMemo(() => {
+    const dueToday = assessments.filter((a) => toDateOnly(a.dueDate) === today);
+    const pulledAhead = assessments.filter((a) => queuedAheadIds.includes(a.id) && toDateOnly(a.dueDate) !== today);
+    return [...dueToday, ...pulledAhead].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  }, [assessments, today, queuedAheadIds]);
   const completedToday = todaysAssessments.filter((a) => a.status === 'Completed').length;
   const completionPct = todaysAssessments.length === 0 ? 100 : Math.round((completedToday / todaysAssessments.length) * 100);
 
   const todaysACTMinutes = useMemo(
-    () => actSectionSessions.filter((s) => s.date === BASELINE_DATE_STR).reduce((acc, s) => acc + s.minutesSpent, 0),
-    [actSectionSessions]
+    () => actSectionSessions.filter((s) => s.date === today).reduce((acc, s) => acc + s.minutesSpent, 0),
+    [actSectionSessions, today]
   );
   const todaysTrainingMinutes = useMemo(
-    () => trainingLogs.filter((t) => t.date === BASELINE_DATE_STR).reduce((acc, t) => acc + t.durationMinutes, 0),
-    [trainingLogs]
+    () => trainingLogs.filter((t) => t.date === today).reduce((acc, t) => acc + t.durationMinutes, 0),
+    [trainingLogs, today]
   );
   const todaysAcademicMinutes = useMemo(
-    () => studyLogs.filter((l) => toDateOnly(l.timestamp) === BASELINE_DATE_STR).reduce((acc, l) => acc + l.durationMinutes, 0),
-    [studyLogs]
+    () => studyLogs.filter((l) => toDateOnly(l.timestamp) === today).reduce((acc, l) => acc + l.durationMinutes, 0),
+    [studyLogs, today]
   );
   const todaysOutreach = useMemo(
     () =>
-      coldEmailLogs.filter((l) => l.sentDate && toDateOnly(l.sentDate) === BASELINE_DATE_STR).length +
-      targetUniversities.filter((u) => u.deadlineDate === BASELINE_DATE_STR).length,
-    [coldEmailLogs, targetUniversities]
+      coldEmailLogs.filter((l) => l.sentDate && toDateOnly(l.sentDate) === today).length +
+      targetUniversities.filter((u) => u.deadlineDate === today).length,
+    [coldEmailLogs, targetUniversities, today]
   );
 
   const totalMinutes = todaysAcademicMinutes + todaysACTMinutes + todaysTrainingMinutes;
@@ -118,6 +122,7 @@ export const DailyIntelBriefing: React.FC = () => {
             todaysAssessments.map((a) => {
               const course = REGISTERED_COURSES.find((c) => c.id === a.courseId);
               const done = a.status === 'Completed';
+              const pulledAhead = toDateOnly(a.dueDate) !== today;
               return (
                 <button
                   key={a.id}
@@ -132,6 +137,7 @@ export const DailyIntelBriefing: React.FC = () => {
                   <span className={`truncate ${done ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
                     {a.title} <span style={{ color: course?.color }}>· {course?.code}</span>
                   </span>
+                  {pulledAhead && <FastForward className="w-2.5 h-2.5 text-cf-accent shrink-0" />}
                 </button>
               );
             })

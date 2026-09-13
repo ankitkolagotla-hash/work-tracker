@@ -88,6 +88,8 @@ export interface Assessment {
   unitsCovered: string[];
   dueDate: string;
   status: AssessmentStatus;
+  /** Set the moment a task is marked Completed (virtual system date, not raw device clock) — powers daily completion analytics. */
+  completedAt?: string | null;
   difficulty: AssessmentDifficulty;
   points: number;
   actualScore?: number;

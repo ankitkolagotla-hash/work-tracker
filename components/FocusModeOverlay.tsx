@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useFocusStore, SPRINT_PRESETS } from '../store/useFocusStore';
 import { useAssessmentStore } from '../store/useAssessmentStore';
+import { useSystemDate } from '../store/useSystemDateStore';
 import { isUpcoming } from '../lib/date';
 import { Minimize2 } from 'lucide-react';
 
@@ -21,13 +22,14 @@ function formatMMSS(secs: number): string {
 export const FocusModeOverlay: React.FC = () => {
   const { focusModeActive, setFocusModeActive, phase, secondsRemaining, sprintPresetId } = useFocusStore();
   const assessments = useAssessmentStore((s) => s.assessments);
+  const today = useSystemDate();
   const [taskId, setTaskId] = useState('');
   const [scratchpad, setScratchpad] = useState('');
 
   if (!focusModeActive) return null;
 
   const preset = SPRINT_PRESETS.find((p) => p.id === sprintPresetId);
-  const upcoming = assessments.filter((a) => isUpcoming(a.dueDate) && a.status !== 'Completed');
+  const upcoming = assessments.filter((a) => isUpcoming(a.dueDate, today) && a.status !== 'Completed');
 
   return (
     <div className="fixed inset-0 z-40 bg-cf-bg flex flex-col items-center justify-center px-6 pb-24">
