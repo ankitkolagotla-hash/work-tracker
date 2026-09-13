@@ -12,11 +12,9 @@ import {
   isSaturday,
   toDateOnly,
 } from '../lib/date';
-import { useLifeOSStore } from '../store/useLifeOSStore';
 import { useSystemDate } from '../store/useSystemDateStore';
-import { downloadICS } from '../lib/icsExport';
 import { CalendarSyncDropZone } from './CalendarSyncDropZone';
-import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap, CheckCircle2, CalendarPlus } from 'lucide-react';
+import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap, CheckCircle2 } from 'lucide-react';
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
 
@@ -66,7 +64,6 @@ export const CalendarView: React.FC = () => {
   const [monthIndex, setMonthIndex] = useState<8 | 9>(() => (systemDate.slice(5, 7) === '10' ? 9 : 8));
 
   const { assessments, studyLogs, verifiedBlocks, toggleBlockVerified, toggleTaskComplete } = useAssessmentStore();
-  const actMockExams = useLifeOSStore((s) => s.actMockExams);
 
   return (
     <div className="bg-cf-card border border-cf-border rounded-xl p-6 text-cf-text">
@@ -78,12 +75,6 @@ export const CalendarView: React.FC = () => {
           <p className="text-xs text-cf-text-muted mt-0.5">System date: {formatFullDate(systemDate)}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => downloadICS(assessments, actMockExams)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-cf-bg border border-cf-border hover:border-slate-600 text-xs font-semibold text-cf-text-muted hover:text-cf-text rounded-lg transition"
-          >
-            <CalendarPlus className="w-3.5 h-3.5 text-cf-accent" /> Export .ics
-          </button>
           <div className="flex items-center gap-1 bg-cf-bg border border-cf-border rounded-lg p-1">
             {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((mode) => (
               <button

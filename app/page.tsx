@@ -26,7 +26,6 @@ import { useSystemDate } from '../store/useSystemDateStore';
 import { formatFullDate, isUpcoming, isPast } from '../lib/date';
 import {
   Plus,
-  RefreshCw,
   Play,
   Trash2,
   Calendar,
@@ -56,33 +55,13 @@ const NAV_TABS: { id: NavTab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function Home() {
-  const { assessments, canvasFeedUrl, importCanvasEvents, deleteAssessment } = useAssessmentStore();
+  const { assessments, deleteAssessment } = useAssessmentStore();
   const systemDate = useSystemDate();
   const [activeTab, setActiveTab] = useState<NavTab>('daily-intel');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [activeStudyId, setActiveStudyId] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-
-  const handleSyncCanvas = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch('/api/calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: canvasFeedUrl }),
-      });
-      const data = await res.json();
-      if (data.events) {
-        importCanvasEvents(data.events);
-      }
-    } catch (err) {
-      console.error('Failed to sync Canvas:', err);
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   if (activeStudyId) {
     return (
@@ -122,14 +101,6 @@ export default function Home() {
               className="flex items-center gap-2 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 rounded-lg text-xs font-semibold tracking-wider text-slate-300 transition"
             >
               <ClipboardPaste className="w-3.5 h-3.5 text-cf-accent" /> Paste Dashboard
-            </button>
-            <button
-              onClick={handleSyncCanvas}
-              disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 rounded-lg text-xs font-semibold tracking-wider text-slate-300 transition disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-cf-accent ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Syncing...' : 'Sync Canvas Feed'}
             </button>
             <button
               onClick={() => setIsModalOpen(true)}

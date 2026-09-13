@@ -22,13 +22,12 @@ interface AssessmentState {
     lastLoggedSeconds: number;
     isRunning: boolean;
   };
-  canvasFeedUrl: string;
   verifiedBlocks: string[];
   /** IDs pulled ahead into today's active sprint queue — a work-ahead buffer that never touches the real dueDate. */
   queuedAheadIds: string[];
 
   addAssessment: (data: Omit<Assessment, 'id' | 'readinessIndex' | 'studyPack'>) => void;
-  importCanvasEvents: (events: Assessment[]) => void;
+  importCanvasEvents: (events: Assessment[], todayStr?: string) => void;
   regenerateStudyPack: (assessmentId: string, rawText: string) => void;
   appendMaterials: (assessmentId: string, additionalText: string) => void;
   startStudySession: (assessmentId: string) => void;
@@ -38,6 +37,8 @@ interface AssessmentState {
   deleteAssessment: (id: string) => void;
   toggleBlockVerified: (key: string) => void;
   toggleTaskComplete: (id: string) => void;
+  /** Bulk-flips a set of assessments to Completed (used by the Canvas sync engine) — touches only status/completedAt, nothing else. */
+  markAssessmentsCompleted: (ids: string[]) => void;
   toggleQueuedAhead: (id: string) => void;
 }
 
@@ -57,9 +58,6 @@ Taxonomic Hierarchy: Domain, Kingdom, Phylum, Class, Order, Family, Genus, Speci
 export const useAssessmentStore = create<AssessmentState>()(
   persist(
     (set, get) => ({
-      canvasFeedUrl:
-        'https://issaquah.instructure.com/feeds/calendars/user_QeloAEpfBFMRDzKfi2PNj6w6C236vTQofVfALMl0.ics',
-
       // Fresh baseline: Friday, September 11, 2026. No historical completions —
       // every assessment starts at 0% readiness. This is the user's real active
       // schedule, not mock data.
@@ -404,10 +402,10 @@ export const useAssessmentStore = create<AssessmentState>()(
         set((state) => ({ assessments: [newAssessment, ...state.assessments] }));
       },
 
-      importCanvasEvents: (incomingEvents) => {
+      importCanvasEvents: (incomingEvents, todayStr) => {
         set((state) => {
           const existingTitles = new Set(state.assessments.map((a) => a.title));
-          const uniqueNew = incomingEvents.filter((e) => !existingTitles.has(e.title) && !isPast(e.dueDate));
+          const uniqueNew = incomingEvents.filter((e) => !existingTitles.has(e.title) && !isPast(e.dueDate, todayStr));
           return { assessments: [...uniqueNew, ...state.assessments] };
         });
       },
@@ -521,6 +519,16 @@ export const useAssessmentStore = create<AssessmentState>()(
         }));
       },
 
+      markAssessmentsCompleted: (ids) => {
+        if (ids.length === 0) return;
+        const idSet = new Set(ids);
+        set((state) => ({
+          assessments: state.assessments.map((a) =>
+            idSet.has(a.id) ? { ...a, status: 'Completed', completedAt: resolveSystemDate(useSystemDateStore.getState()) } : a
+          ),
+        }));
+      },
+
       queuedAheadIds: [],
       toggleQueuedAhead: (id) => {
         set((state) => ({
@@ -545,7 +553,6 @@ export const useAssessmentStore = create<AssessmentState>()(
           assessments: p.assessments ?? currentState.assessments,
           studyLogs: p.studyLogs ?? currentState.studyLogs,
           activeSession: p.activeSession ?? currentState.activeSession,
-          canvasFeedUrl: p.canvasFeedUrl ?? currentState.canvasFeedUrl,
           verifiedBlocks: p.verifiedBlocks ?? currentState.verifiedBlocks,
           queuedAheadIds: p.queuedAheadIds ?? currentState.queuedAheadIds,
         };

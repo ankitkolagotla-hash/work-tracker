@@ -22,8 +22,22 @@ import {
   StudentProfile,
   CommonAppActivityEntry,
 } from '../types/lifeOs';
+import { useAssessmentStore } from './useAssessmentStore';
+import { useSystemDateStore, resolveSystemDate } from './useSystemDateStore';
+import { reconcileCalendarSync } from '../lib/calendarSync';
+
+export type CalendarSyncStatus = 'idle' | 'syncing' | 'error';
 
 interface LifeOSState {
+  // --- Live Canvas Calendar Feed ---
+  canvasFeedUrl: string;
+  lastSyncedAt: string | null;
+  syncStatus: CalendarSyncStatus;
+  syncError: string | null;
+
+  setCanvasFeedUrl: (url: string) => void;
+  syncCalendarFeed: () => Promise<void>;
+
   // --- ACT Intensive Mastery Station ---
   actSectionScores: ACTSectionScore[];
   actErrorLog: ACTErrorLogEntry[];
@@ -185,6 +199,24 @@ function migrateACTErrorRootCause(e: ACTErrorLogEntry): ACTErrorLogEntry {
 }
 
 /**
+ * One-time continuity carry-over: `canvasFeedUrl` used to live in the
+ * assessment store ('chronoflow-store'). If this store has never had its own
+ * feed URL set, check the old location once so a user who already entered
+ * their Canvas link doesn't have to re-type it after this refactor.
+ */
+function readLegacyCanvasFeedUrl(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const raw = window.localStorage.getItem('chronoflow-store');
+    if (!raw) return '';
+    const parsed = JSON.parse(raw) as { state?: { canvasFeedUrl?: string } };
+    return parsed.state?.canvasFeedUrl ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Additive reconciliation, run via the `merge` option (NOT `migrate`) so it
  * applies on every hydration regardless of the stored version number — this
  * store's version is intentionally never bumped again, since a version bump
@@ -198,6 +230,11 @@ function migrateACTErrorRootCause(e: ACTErrorLogEntry): ACTErrorLogEntry {
 function mergeAdditiveState(persistedState: unknown): Partial<LifeOSState> {
   const p = (persistedState ?? {}) as Partial<LifeOSState> & { highlightClips?: LegacyHighlightClip[]; coachContacts?: LegacyCoachContact[]; matchLogs?: LegacyMatchLog[] };
   return {
+    canvasFeedUrl: p.canvasFeedUrl ?? readLegacyCanvasFeedUrl(),
+    lastSyncedAt: p.lastSyncedAt ?? null,
+    // Never resume a stale "syncing" state or a stale error message across reloads.
+    syncStatus: 'idle',
+    syncError: null,
     actSectionScores: p.actSectionScores ?? ACT_SECTIONS.map((section) => ({ section, target: 34, current: 0 })),
     actErrorLog: (p.actErrorLog ?? []).map(migrateACTErrorRootCause),
     actMockExams: p.actMockExams ?? DEFAULT_MOCK_EXAMS,
@@ -218,7 +255,47 @@ function mergeAdditiveState(persistedState: unknown): Partial<LifeOSState> {
 
 export const useLifeOSStore = create<LifeOSState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      canvasFeedUrl: '',
+      lastSyncedAt: null,
+      syncStatus: 'idle',
+      syncError: null,
+
+      setCanvasFeedUrl: (url) => set({ canvasFeedUrl: url }),
+
+      syncCalendarFeed: async () => {
+        const { canvasFeedUrl } = get();
+        if (!canvasFeedUrl.trim()) {
+          set({ syncStatus: 'error', syncError: 'Add a Canvas calendar feed URL first.' });
+          return;
+        }
+
+        set({ syncStatus: 'syncing', syncError: null });
+
+        try {
+          const res = await fetch('/api/calendar-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: canvasFeedUrl }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data?.error ?? 'The calendar feed could not be reached.');
+          }
+
+          const today = resolveSystemDate(useSystemDateStore.getState());
+          const { assessments, importCanvasEvents, markAssessmentsCompleted } = useAssessmentStore.getState();
+          const { newAssessments, completedIds } = reconcileCalendarSync(assessments, data.events ?? [], today);
+
+          if (newAssessments.length > 0) importCanvasEvents(newAssessments, today);
+          if (completedIds.length > 0) markAssessmentsCompleted(completedIds);
+
+          set({ syncStatus: 'idle', syncError: null, lastSyncedAt: new Date().toISOString() });
+        } catch (err) {
+          set({ syncStatus: 'error', syncError: err instanceof Error ? err.message : 'Sync failed.' });
+        }
+      },
+
       actSectionScores: ACT_SECTIONS.map((section) => ({ section, target: 34, current: 0 })),
       actErrorLog: [],
       actMockExams: DEFAULT_MOCK_EXAMS,
