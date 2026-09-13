@@ -18,6 +18,10 @@ import {
 } from '../types/lifeOs';
 import { buildColdEmail } from '../lib/coldEmailBuilder';
 import { matchUniversities, ALL_MAJORS } from '../lib/universityMatcher';
+import { AdmissionsEngineView } from './AdmissionsEngineView';
+import { EssayTrackerPanel } from './EssayTrackerPanel';
+import { ActivityOptimizerPanel } from './ActivityOptimizerPanel';
+import { BragSheetGenerator } from './BragSheetGenerator';
 import { Mail, GraduationCap, FileText, Copy, Trash2, ShieldCheck, Compass, Info, Wand2 } from 'lucide-react';
 
 const UNIVERSITY_STATUSES: UniversityStatus[] = ['Researching', 'Essays In Progress', 'Submitted', 'Decision Received'];
@@ -74,11 +78,17 @@ I'm including this for context, not as an excuse — I want the full picture to 
 export const CollegeOutreachHub: React.FC = () => {
   return (
     <div className="space-y-6">
+      <AdmissionsEngineView />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AdmissionsTracker />
+        <EssayTrackerPanel />
+      </div>
+      <ActivityOptimizerPanel />
       <ColdEmailStudio />
       <UniversityFitPanel />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AdmissionsTracker />
         <AdvocacySuite />
+        <BragSheetGenerator />
       </div>
     </div>
   );
@@ -261,7 +271,7 @@ function ToneToggle<T extends string>({
 
 const CAMPUS_SIZES: (CampusSize | 'No Preference')[] = ['No Preference', 'Small', 'Medium', 'Large'];
 const LOCATION_VIBES: (LocationVibe | 'No Preference')[] = ['No Preference', 'Urban', 'Suburban', 'Rural'];
-const SELECTIVITY_TIERS: (SelectivityTier | 'No Preference')[] = ['No Preference', 'Reach', 'Target', 'Safety'];
+const SELECTIVITY_TIERS: (SelectivityTier | 'No Preference')[] = ['No Preference', 'Extreme Reach', 'Reach', 'Target', 'Safety'];
 
 function UniversityFitPanel() {
   const [prefs, setPrefs] = useState<UniversityFitPreferences>({
@@ -354,8 +364,10 @@ function UniversityFitPanel() {
               <span className="text-sm font-bold text-white">{m.university.name}</span>
               <span
                 className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                  m.tier === 'Reach'
+                  m.tier === 'Extreme Reach'
                     ? 'text-red-300 border-red-800 bg-red-950/40'
+                    : m.tier === 'Reach'
+                    ? 'text-orange-300 border-orange-800 bg-orange-950/40'
                     : m.tier === 'Target'
                     ? 'text-amber-300 border-amber-800 bg-amber-950/40'
                     : 'text-emerald-300 border-emerald-800 bg-emerald-950/40'

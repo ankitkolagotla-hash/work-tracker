@@ -2,7 +2,7 @@
 import React from 'react';
 import { useFocusStore, SPRINT_PRESETS, SprintPresetId } from '../store/useFocusStore';
 import { focusAudioEngine, AudioPresetId } from '../lib/audio';
-import { Zap, Brain, GraduationCap, Square } from 'lucide-react';
+import { Zap, Brain, GraduationCap, Square, Maximize2 } from 'lucide-react';
 
 const SPRINT_AUDIO_MAP: Record<SprintPresetId, AudioPresetId> = {
   ultradian: 'atmospheric-drone',
@@ -23,7 +23,7 @@ function formatMMSS(secs: number): string {
 }
 
 export const SprintLauncher: React.FC = () => {
-  const { sprintPresetId, phase, secondsRemaining, volume, startSprint, endSprint, setAudioPreset, setAudioPlaying } =
+  const { sprintPresetId, phase, secondsRemaining, volume, startSprint, endSprint, setAudioPreset, setAudioPlaying, setFocusModeActive } =
     useFocusStore();
 
   const handleStart = (id: SprintPresetId) => {
@@ -32,6 +32,9 @@ export const SprintLauncher: React.FC = () => {
     setAudioPreset(audioId);
     focusAudioEngine.start(audioId, volume);
     setAudioPlaying(true);
+    // Ultradian 50/10 blocks drop straight into distraction-free Focus Mode;
+    // other sprint types can still enter it manually below.
+    if (id === 'ultradian') setFocusModeActive(true);
   };
 
   const handleEnd = () => {
@@ -56,12 +59,20 @@ export const SprintLauncher: React.FC = () => {
             {phase === 'work' ? activePreset.name : 'Optic Flow Rest'}
           </p>
           <div className="text-4xl font-mono font-bold text-cf-accent mb-3">{formatMMSS(secondsRemaining)}</div>
-          <button
-            onClick={handleEnd}
-            className="flex items-center gap-1.5 mx-auto px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 text-xs font-semibold text-cf-text rounded transition"
-          >
-            <Square className="w-3 h-3" /> End Sprint
-          </button>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setFocusModeActive(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-cf-accent hover:opacity-90 text-black text-xs font-semibold rounded transition"
+            >
+              <Maximize2 className="w-3 h-3" /> Enter Focus Mode
+            </button>
+            <button
+              onClick={handleEnd}
+              className="flex items-center gap-1.5 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 text-xs font-semibold text-cf-text rounded transition"
+            >
+              <Square className="w-3 h-3" /> End Sprint
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -3,6 +3,7 @@ import { UNIVERSITY_DATASET } from './universityData';
 
 /** Acceptance-rate cutoffs used only to bucket the illustrative dataset — not a formal ranking system. */
 export function tierFromAcceptanceRate(acceptanceRatePct: number): SelectivityTier {
+  if (acceptanceRatePct < 7) return 'Extreme Reach';
   if (acceptanceRatePct < 20) return 'Reach';
   if (acceptanceRatePct < 50) return 'Target';
   return 'Safety';

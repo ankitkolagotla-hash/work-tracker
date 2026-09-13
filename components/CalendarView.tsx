@@ -14,7 +14,9 @@ import {
   isSaturday,
   toDateOnly,
 } from '../lib/date';
-import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { useLifeOSStore } from '../store/useLifeOSStore';
+import { downloadICS } from '../lib/icsExport';
+import { CalendarDays, CalendarRange, Calendar as CalendarIcon, GraduationCap, CheckCircle2, CalendarPlus } from 'lucide-react';
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
 
@@ -63,6 +65,7 @@ export const CalendarView: React.FC = () => {
   const [monthIndex, setMonthIndex] = useState<8 | 9>(8); // 8 = September, 9 = October
 
   const { assessments, studyLogs, verifiedBlocks, toggleBlockVerified, toggleTaskComplete } = useAssessmentStore();
+  const actMockExams = useLifeOSStore((s) => s.actMockExams);
 
   return (
     <div className="bg-cf-card border border-cf-border rounded-xl p-6 text-cf-text">
@@ -73,18 +76,26 @@ export const CalendarView: React.FC = () => {
           </h2>
           <p className="text-xs text-cf-text-muted mt-0.5">System date: {BASELINE_LABEL}</p>
         </div>
-        <div className="flex items-center gap-1 bg-cf-bg border border-cf-border rounded-lg p-1">
-          {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md capitalize transition ${
-                viewMode === mode ? 'bg-cf-accent text-black' : 'text-cf-text-muted hover:text-cf-text'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => downloadICS(assessments, actMockExams)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-cf-bg border border-cf-border hover:border-slate-600 text-xs font-semibold text-cf-text-muted hover:text-cf-text rounded-lg transition"
+          >
+            <CalendarPlus className="w-3.5 h-3.5 text-cf-accent" /> Export .ics
+          </button>
+          <div className="flex items-center gap-1 bg-cf-bg border border-cf-border rounded-lg p-1">
+            {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md capitalize transition ${
+                  viewMode === mode ? 'bg-cf-accent text-black' : 'text-cf-text-muted hover:text-cf-text'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

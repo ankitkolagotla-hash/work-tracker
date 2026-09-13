@@ -16,6 +16,8 @@ import { ACTMasteryHub } from '../components/ACTMasteryHub';
 import { AssignmentStudioModal } from '../components/AssignmentStudioModal';
 import { CollegeOutreachHub } from '../components/CollegeOutreachHub';
 import { AthleticsHub } from '../components/AthleticsHub';
+import { BackupRestoreModal } from '../components/BackupRestoreModal';
+import { FocusModeOverlay } from '../components/FocusModeOverlay';
 import { BASELINE_LABEL, isUpcoming, isPast } from '../lib/date';
 import {
   Plus,
@@ -32,24 +34,28 @@ import {
   PenTool,
   GraduationCap,
   Shirt,
+  DatabaseBackup,
+  Sunrise,
 } from 'lucide-react';
 
-type NavTab = 'academic' | 'course-hub' | 'act' | 'assignment-studio' | 'college' | 'athletics';
+type NavTab = 'daily-intel' | 'academic' | 'course-hub' | 'act' | 'assignment-studio' | 'college' | 'athletics';
 
 const NAV_TABS: { id: NavTab; label: string; icon: React.ElementType }[] = [
+  { id: 'daily-intel', label: 'Daily Intel', icon: Sunrise },
   { id: 'academic', label: 'Academic Flow', icon: LayoutGrid },
   { id: 'course-hub', label: 'Course Hub', icon: BookOpen },
   { id: 'act', label: 'ACT Mastery', icon: Target },
   { id: 'assignment-studio', label: 'Assignment Studio', icon: PenTool },
-  { id: 'college', label: 'College & Outreach', icon: GraduationCap },
+  { id: 'college', label: 'College Admissions', icon: GraduationCap },
   { id: 'athletics', label: 'Athletics & Recruiting', icon: Shirt },
 ];
 
 export default function Home() {
   const { assessments, canvasFeedUrl, importCanvasEvents, deleteAssessment } = useAssessmentStore();
-  const [activeTab, setActiveTab] = useState<NavTab>('academic');
+  const [activeTab, setActiveTab] = useState<NavTab>('daily-intel');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [activeStudyId, setActiveStudyId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -100,6 +106,12 @@ export default function Home() {
           <div className="flex flex-wrap items-center gap-3">
             <ThemeSwitcher />
             <button
+              onClick={() => setIsBackupModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 rounded-lg text-xs font-semibold tracking-wider text-slate-300 transition"
+            >
+              <DatabaseBackup className="w-3.5 h-3.5 text-cf-accent" /> Backup
+            </button>
+            <button
               onClick={() => setIsPasteModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 rounded-lg text-xs font-semibold tracking-wider text-slate-300 transition"
             >
@@ -139,13 +151,18 @@ export default function Home() {
           })}
         </nav>
 
-        {activeTab === 'academic' && (
+        {activeTab === 'daily-intel' && (
           <div className="space-y-8">
             <DailyIntelBriefing />
-            <NightSleepRecall />
-            <CalendarView />
             <SprintLauncher />
+            <NightSleepRecall />
             <StudyStreakTracker />
+          </div>
+        )}
+
+        {activeTab === 'academic' && (
+          <div className="space-y-8">
+            <CalendarView />
 
             <div>
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -187,7 +204,9 @@ export default function Home() {
 
         <AssessmentSetupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         <DashboardPasteModal isOpen={isPasteModalOpen} onClose={() => setIsPasteModalOpen(false)} />
+        <BackupRestoreModal isOpen={isBackupModalOpen} onClose={() => setIsBackupModalOpen(false)} />
       </div>
+      <FocusModeOverlay />
     </main>
   );
 }

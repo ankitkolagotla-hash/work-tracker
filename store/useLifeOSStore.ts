@@ -10,7 +10,7 @@ import {
   MatchLog,
   HighlightClip,
   CoachContact,
-  CoachContactStatus,
+  CoachPipelineStage,
   TrainingLog,
   TargetUniversity,
   UniversityStatus,
@@ -19,6 +19,8 @@ import {
   ColdEmailStatus,
   AdvocacyDraft,
   AdvocacyDraftType,
+  StudentProfile,
+  CommonAppActivityEntry,
 } from '../types/lifeOs';
 
 interface LifeOSState {
@@ -46,7 +48,8 @@ interface LifeOSState {
   addHighlightClip: (clip: Omit<HighlightClip, 'id'>) => void;
   deleteHighlightClip: (id: string) => void;
   addCoachContact: (contact: Omit<CoachContact, 'id'>) => void;
-  updateCoachStatus: (id: string, status: CoachContactStatus) => void;
+  updateCoachStatus: (id: string, status: CoachPipelineStage) => void;
+  scheduleFollowUp: (id: string, date: string) => void;
   markTapeSent: (id: string) => void;
   deleteCoachContact: (id: string) => void;
   addTrainingLog: (log: Omit<TrainingLog, 'id'>) => void;
@@ -57,6 +60,9 @@ interface LifeOSState {
   supplementalEssays: SupplementalEssay[];
   coldEmailLogs: ColdEmailLog[];
   advocacyDrafts: AdvocacyDraft[];
+  studentProfile: StudentProfile | null;
+  commonAppActivities: CommonAppActivityEntry[];
+  bragSheetNotes: string;
 
   addUniversity: (u: Omit<TargetUniversity, 'id'>) => void;
   updateUniversityStatus: (id: string, status: UniversityStatus) => void;
@@ -70,6 +76,144 @@ interface LifeOSState {
   deleteColdEmailLog: (id: string) => void;
   upsertAdvocacyDraft: (draft: { id?: string; type: AdvocacyDraftType; title: string; content: string }) => void;
   deleteAdvocacyDraft: (id: string) => void;
+  setStudentProfile: (profile: StudentProfile) => void;
+  addCommonAppActivity: (entry: Omit<CommonAppActivityEntry, 'id'>) => void;
+  updateCommonAppActivity: (id: string, optimizedText: string) => void;
+  deleteCommonAppActivity: (id: string) => void;
+  setBragSheetNotes: (notes: string) => void;
+}
+
+const DEFAULT_MOCK_EXAMS: ACTMockExam[] = [
+  { id: 'mock-sep19', date: '2026-09-19', scheduledTime: '8:00 AM', sectionSplits: [
+    { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
+  ], completed: false },
+  { id: 'mock-sep26', date: '2026-09-26', scheduledTime: '8:00 AM', sectionSplits: [
+    { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
+  ], completed: false },
+  { id: 'mock-oct03', date: '2026-10-03', scheduledTime: '8:00 AM', sectionSplits: [
+    { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
+  ], completed: false },
+  { id: 'mock-oct10', date: '2026-10-10', scheduledTime: '8:00 AM', sectionSplits: [
+    { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
+  ], completed: false },
+];
+
+/** Old highlight clip shape (pre matchName/opponent/timestampStart/timestampEnd split). */
+interface LegacyHighlightClip {
+  id: string;
+  timestamp?: string;
+  clipUrl: string;
+  skillsShown: string[];
+  notes: string;
+  matchName?: string;
+  opponent?: string;
+  timestampStart?: string;
+  timestampEnd?: string;
+}
+
+function migrateHighlightClip(c: LegacyHighlightClip): HighlightClip {
+  return {
+    id: c.id,
+    matchName: c.matchName ?? '',
+    opponent: c.opponent ?? '',
+    timestampStart: c.timestampStart ?? c.timestamp ?? '',
+    timestampEnd: c.timestampEnd ?? '',
+    clipUrl: c.clipUrl,
+    skillsShown: (c.skillsShown ?? []) as HighlightClip['skillsShown'],
+    notes: c.notes ?? '',
+  };
+}
+
+/** Old coach contact status values, from before the CRM pipeline rename. */
+const LEGACY_COACH_STATUS_MAP: Record<string, CoachPipelineStage> = {
+  'Not Contacted': 'Prospecting',
+  Emailed: 'Initial Email Sent',
+  'Following Up': 'Film Sent',
+  Responded: 'Campus Visit',
+  'No Response': 'Prospecting',
+};
+
+interface LegacyCoachContact {
+  id: string;
+  schoolName: string;
+  coachName: string;
+  email: string;
+  status: string;
+  lastContactDate: string | null;
+  tapeSentDate?: string | null;
+  nextFollowUpDate?: string | null;
+  notes: string;
+}
+
+function migrateCoachContact(c: LegacyCoachContact): CoachContact {
+  const isCurrentStage = (s: string): s is CoachPipelineStage =>
+    ['Prospecting', 'Initial Email Sent', 'Film Sent', 'Campus Visit', 'Offer / Closing'].includes(s);
+  return {
+    id: c.id,
+    schoolName: c.schoolName,
+    coachName: c.coachName,
+    email: c.email,
+    status: isCurrentStage(c.status) ? c.status : LEGACY_COACH_STATUS_MAP[c.status] ?? 'Prospecting',
+    lastContactDate: c.lastContactDate ?? null,
+    tapeSentDate: c.tapeSentDate ?? null,
+    nextFollowUpDate: c.nextFollowUpDate ?? null,
+    notes: c.notes ?? '',
+  };
+}
+
+interface LegacyMatchLog {
+  id: string;
+  date: string;
+  opponent: string;
+  competition: string;
+  minutesPlayed: number;
+  position: string;
+  tacticalNotes: string;
+  filmReviewed: boolean;
+  teamResult?: string;
+  selfRating?: 1 | 2 | 3 | 4 | 5;
+}
+
+function migrateMatchLog(m: LegacyMatchLog): MatchLog {
+  return { ...m, teamResult: m.teamResult ?? '', selfRating: m.selfRating ?? 3 };
+}
+
+function migrateACTErrorRootCause(e: ACTErrorLogEntry): ACTErrorLogEntry {
+  // 'Time Pressure' was renamed to 'Pacing Panic'; remap any older logged entries.
+  if ((e.rootCause as string) === 'Time Pressure') return { ...e, rootCause: 'Pacing Panic' };
+  return e;
+}
+
+/**
+ * Additive reconciliation, run via the `merge` option (NOT `migrate`) so it
+ * applies on every hydration regardless of the stored version number — this
+ * store's version is intentionally never bumped again, since a version bump
+ * only matters here as a trigger for zustand's migrate callback, and a wipe
+ * is exactly what this function exists to avoid. Every field below falls
+ * back to a sensible default only when genuinely absent from the persisted
+ * blob; anything the user already has (scores, logs, contacts, streak-
+ * feeding session data) is preserved and shape-migrated in place rather than
+ * discarded.
+ */
+function mergeAdditiveState(persistedState: unknown): Partial<LifeOSState> {
+  const p = (persistedState ?? {}) as Partial<LifeOSState> & { highlightClips?: LegacyHighlightClip[]; coachContacts?: LegacyCoachContact[]; matchLogs?: LegacyMatchLog[] };
+  return {
+    actSectionScores: p.actSectionScores ?? ACT_SECTIONS.map((section) => ({ section, target: 34, current: 0 })),
+    actErrorLog: (p.actErrorLog ?? []).map(migrateACTErrorRootCause),
+    actMockExams: p.actMockExams ?? DEFAULT_MOCK_EXAMS,
+    actSectionSessions: p.actSectionSessions ?? [],
+    matchLogs: (p.matchLogs ?? []).map(migrateMatchLog),
+    highlightClips: (p.highlightClips ?? []).map(migrateHighlightClip),
+    coachContacts: (p.coachContacts ?? []).map(migrateCoachContact),
+    trainingLogs: p.trainingLogs ?? [],
+    targetUniversities: p.targetUniversities ?? [],
+    supplementalEssays: p.supplementalEssays ?? [],
+    coldEmailLogs: p.coldEmailLogs ?? [],
+    advocacyDrafts: p.advocacyDrafts ?? [],
+    studentProfile: p.studentProfile ?? null,
+    commonAppActivities: p.commonAppActivities ?? [],
+    bragSheetNotes: p.bragSheetNotes ?? '',
+  };
 }
 
 export const useLifeOSStore = create<LifeOSState>()(
@@ -77,21 +221,7 @@ export const useLifeOSStore = create<LifeOSState>()(
     (set) => ({
       actSectionScores: ACT_SECTIONS.map((section) => ({ section, target: 34, current: 0 })),
       actErrorLog: [],
-      actMockExams: [
-        { id: 'mock-sep19', date: '2026-09-19', scheduledTime: '8:00 AM', sectionSplits: [
-          { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
-        ], completed: false },
-        { id: 'mock-sep26', date: '2026-09-26', scheduledTime: '8:00 AM', sectionSplits: [
-          { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
-        ], completed: false },
-        { id: 'mock-oct03', date: '2026-10-03', scheduledTime: '8:00 AM', sectionSplits: [
-          { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
-        ], completed: false },
-        { id: 'mock-oct10', date: '2026-10-10', scheduledTime: '8:00 AM', sectionSplits: [
-          { section: 'English', minutes: 45 }, { section: 'Math', minutes: 60 }, { section: 'Reading', minutes: 35 }, { section: 'Science', minutes: 35 },
-        ], completed: false },
-      ],
-
+      actMockExams: DEFAULT_MOCK_EXAMS,
       actSectionSessions: [],
 
       updateSectionScore: (section, current) => {
@@ -153,6 +283,11 @@ export const useLifeOSStore = create<LifeOSState>()(
           ),
         }));
       },
+      scheduleFollowUp: (id, date) => {
+        set((state) => ({
+          coachContacts: state.coachContacts.map((c) => (c.id === id ? { ...c, nextFollowUpDate: date } : c)),
+        }));
+      },
       markTapeSent: (id) => {
         set((state) => ({
           coachContacts: state.coachContacts.map((c) =>
@@ -174,6 +309,9 @@ export const useLifeOSStore = create<LifeOSState>()(
       supplementalEssays: [],
       coldEmailLogs: [],
       advocacyDrafts: [],
+      studentProfile: null,
+      commonAppActivities: [],
+      bragSheetNotes: '',
 
       addUniversity: (u) => {
         set((state) => ({ targetUniversities: [{ ...u, id: `univ-${Date.now()}` }, ...state.targetUniversities] }));
@@ -235,10 +373,26 @@ export const useLifeOSStore = create<LifeOSState>()(
       deleteAdvocacyDraft: (id) => {
         set((state) => ({ advocacyDrafts: state.advocacyDrafts.filter((d) => d.id !== id) }));
       },
+      setStudentProfile: (profile) => set({ studentProfile: profile }),
+      addCommonAppActivity: (entry) => {
+        set((state) => ({
+          commonAppActivities: [{ ...entry, id: `activity-${Date.now()}` }, ...state.commonAppActivities],
+        }));
+      },
+      updateCommonAppActivity: (id, optimizedText) => {
+        set((state) => ({
+          commonAppActivities: state.commonAppActivities.map((a) => (a.id === id ? { ...a, optimizedText } : a)),
+        }));
+      },
+      deleteCommonAppActivity: (id) => {
+        set((state) => ({ commonAppActivities: state.commonAppActivities.filter((a) => a.id !== id) }));
+      },
+      setBragSheetNotes: (notes) => set({ bragSheetNotes: notes }),
     }),
     {
       name: 'chronoflow-lifeos-store',
       version: 2,
+      merge: (persistedState, currentState) => ({ ...currentState, ...mergeAdditiveState(persistedState) }),
     }
   )
 );

@@ -514,6 +514,22 @@ export const useAssessmentStore = create<AssessmentState>()(
     {
       name: 'chronoflow-store',
       version: 5,
+      // Additive merge, not a version-triggered migrate: this runs on every
+      // hydration so future field additions here can never silently wipe a
+      // student's existing tasks, study logs, or flashcard readiness data —
+      // anything present in localStorage wins, anything missing falls back
+      // to the fresh-install default already defined above.
+      merge: (persistedState, currentState) => {
+        const p = (persistedState ?? {}) as Partial<AssessmentState>;
+        return {
+          ...currentState,
+          assessments: p.assessments ?? currentState.assessments,
+          studyLogs: p.studyLogs ?? currentState.studyLogs,
+          activeSession: p.activeSession ?? currentState.activeSession,
+          canvasFeedUrl: p.canvasFeedUrl ?? currentState.canvasFeedUrl,
+          verifiedBlocks: p.verifiedBlocks ?? currentState.verifiedBlocks,
+        };
+      },
     }
   )
 );

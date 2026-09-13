@@ -26,6 +26,7 @@ interface FocusState {
   audioPresetId: AudioPresetId;
   volume: number;
   isAudioPlaying: boolean;
+  focusModeActive: boolean;
 
   startSprint: (presetId: SprintPresetId) => void;
   tickSprint: () => void;
@@ -33,6 +34,7 @@ interface FocusState {
   setAudioPreset: (id: AudioPresetId) => void;
   setVolume: (v: number) => void;
   setAudioPlaying: (playing: boolean) => void;
+  setFocusModeActive: (active: boolean) => void;
 }
 
 export const useFocusStore = create<FocusState>()(
@@ -44,6 +46,7 @@ export const useFocusStore = create<FocusState>()(
       audioPresetId: 'atmospheric-drone',
       volume: 0.4,
       isAudioPlaying: false,
+      focusModeActive: false,
 
       startSprint: (presetId) => {
         const preset = SPRINT_PRESETS.find((p) => p.id === presetId);
@@ -73,6 +76,7 @@ export const useFocusStore = create<FocusState>()(
       setAudioPreset: (id) => set({ audioPresetId: id }),
       setVolume: (v) => set({ volume: v }),
       setAudioPlaying: (playing) => set({ isAudioPlaying: playing }),
+      setFocusModeActive: (active) => set({ focusModeActive: active }),
     }),
     {
       name: 'chronoflow-focus',

@@ -18,6 +18,11 @@ import { generateAdaptiveDrillSet } from '../lib/actDrills';
 import { dateStrToTimestamp, formatFullDate } from '../lib/date';
 import { recognizeImageText, gradeAnswers } from '../lib/actOcr';
 import { predictSectionScores, predictComposite } from '../lib/actPredictor';
+import { classifyQuestionTaxonomy } from '../lib/actTaxonomy';
+import { putMedia } from '../lib/mediaStorage';
+import { ACTPacingTimer } from './ACTPacingTimer';
+import { FormulaCheatSheet } from './FormulaCheatSheet';
+import { ACTErrorHeatmap } from './ACTErrorHeatmap';
 import {
   Target,
   AlertOctagon,
@@ -76,10 +81,11 @@ export const ACTMasteryHub: React.FC = () => {
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Target className="w-5 h-5 text-cf-accent" /> ACT Intensive Mastery Station
           </h2>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-3 text-xs">
             <CalendarClock className="w-3.5 h-3.5 text-cf-accent" />
             <span className="text-slate-400">Target: {formatFullDate(ACT_TARGET_DATE)}</span>
             <span className="font-mono font-bold text-cf-accent">{daysLeft} days left</span>
+            <FormulaCheatSheet />
           </div>
         </div>
 
@@ -119,8 +125,13 @@ export const ACTMasteryHub: React.FC = () => {
       <ScorePredictorPanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ACTPacingTimer />
         <ImageIntakePanel />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <StudyHoursLogPanel />
+        <ACTErrorHeatmap />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -409,6 +420,7 @@ function ImageIntakePanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loggedCount, setLoggedCount] = useState(0);
+  const [detectedTag, setDetectedTag] = useState<string | null>(null);
 
   const handleGrade = async () => {
     if (!selectedFile) return;
@@ -420,6 +432,14 @@ function ImageIntakePanel() {
       const keyText = keyFile ? await recognizeImageText(keyFile) : null;
       setGraded(gradeAnswers(selectedText, keyText));
       setOverrides({});
+
+      const classification = classifyQuestionTaxonomy(selectedText);
+      setDetectedTag(classification.tag);
+      if (classification.section) setLoggingSection(classification.section);
+
+      // Cache the source screenshot in IndexedDB (not localStorage) so it
+      // survives without hitting the 5MB quota, tagged for later lookup.
+      putMedia(selectedFile, { tag: 'act-ocr-intake' }).catch((err) => console.error('Media cache failed:', err));
     } catch (err) {
       setError('OCR failed to read the image. Try a clearer, higher-contrast photo.');
       console.error(err);
@@ -439,7 +459,7 @@ function ImageIntakePanel() {
         logACTError({
           testDate: new Date().toISOString().slice(0, 10),
           section: loggingSection,
-          questionType: `Q${item.questionNumber} (OCR intake)`,
+          questionType: detectedTag && detectedTag !== 'Unclassified' ? detectedTag : `Q${item.questionNumber} (OCR intake)`,
           rootCause: 'Content Gap',
           notes: `Selected ${item.selectedAnswer}${item.correctAnswer ? `, correct ${item.correctAnswer}` : ''}`,
         });
@@ -472,6 +492,11 @@ function ImageIntakePanel() {
       </button>
 
       {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+      {detectedTag && (
+        <p className="text-[11px] text-slate-400 mb-3">
+          Detected taxonomy: <span className="font-semibold text-cf-accent">{detectedTag}</span>
+        </p>
+      )}
 
       {graded && (
         <>

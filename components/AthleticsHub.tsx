@@ -1,11 +1,11 @@
 'use client';
 import React, { useMemo, useState } from 'react';
 import { useLifeOSStore } from '../store/useLifeOSStore';
-import { HIGHLIGHT_SKILLS, HighlightSkill, CoachContactStatus, TrainingSessionType } from '../types/lifeOs';
+import { HIGHLIGHT_SKILLS, HighlightSkill, TrainingSessionType } from '../types/lifeOs';
 import { sequenceReel } from '../lib/reelSequencer';
-import { Shirt, Film, Send, Dumbbell, Trash2, Plus, Clapperboard, CheckCircle2 } from 'lucide-react';
+import { RecruitingCrmView } from './RecruitingCrmView';
+import { Shirt, Film, Dumbbell, Trash2, Clapperboard, Star } from 'lucide-react';
 
-const COACH_STATUSES: CoachContactStatus[] = ['Not Contacted', 'Emailed', 'Responded', 'Following Up', 'No Response'];
 const TRAINING_TYPES: TrainingSessionType[] = ['Strength', 'Conditioning', 'Technical', 'Recovery'];
 
 export const AthleticsHub: React.FC = () => {
@@ -16,10 +16,8 @@ export const AthleticsHub: React.FC = () => {
         <HighlightReelPanel />
       </div>
       <ReelSequencerPanel />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CoachPipelinePanel />
-        <TrainingLogPanel />
-      </div>
+      <RecruitingCrmView />
+      <TrainingLogPanel />
     </div>
   );
 };
@@ -30,6 +28,8 @@ function MatchLogPanel() {
   const [competition, setCompetition] = useState('ECNL');
   const [minutesPlayed, setMinutesPlayed] = useState(90);
   const [position, setPosition] = useState('');
+  const [teamResult, setTeamResult] = useState('');
+  const [selfRating, setSelfRating] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [tacticalNotes, setTacticalNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -41,20 +41,24 @@ function MatchLogPanel() {
       competition,
       minutesPlayed,
       position: position.trim(),
+      teamResult: teamResult.trim(),
+      selfRating,
       tacticalNotes,
       filmReviewed: false,
     });
     setOpponent('');
     setPosition('');
+    setTeamResult('');
+    setSelfRating(3);
     setTacticalNotes('');
   };
 
   return (
     <div className="bg-cf-card border border-cf-border rounded-xl p-6">
       <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-        <Shirt className="w-4 h-4 text-cf-accent" /> Match Log
+        <Shirt className="w-4 h-4 text-cf-accent" /> Soccer Match &amp; Performance Log
       </h3>
-      <p className="text-xs text-slate-400 mb-4">Showcase &amp; match schedule, minutes played, captaincy notes.</p>
+      <p className="text-xs text-slate-400 mb-4">Minutes played, position, team result, and a self-evaluation rating.</p>
 
       <form onSubmit={handleSubmit} className="space-y-2 mb-4">
         <div className="grid grid-cols-2 gap-2">
@@ -74,6 +78,23 @@ function MatchLogPanel() {
           <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Position"
             className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
         </div>
+        <input value={teamResult} onChange={(e) => setTeamResult(e.target.value)} placeholder="Team result (e.g., W 3-1)"
+          className="w-full bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
+        <div>
+          <label className="text-[10px] text-slate-500 block mb-1">Self-evaluation (1-5)</label>
+          <div className="flex gap-1">
+            {([1, 2, 3, 4, 5] as const).map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setSelfRating(n)}
+                className={n <= selfRating ? 'text-amber-400' : 'text-slate-600'}
+              >
+                <Star className="w-4 h-4" fill={n <= selfRating ? 'currentColor' : 'none'} />
+              </button>
+            ))}
+          </div>
+        </div>
         <input value={tacticalNotes} onChange={(e) => setTacticalNotes(e.target.value)} placeholder="Tactical / captaincy notes"
           className="w-full bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
         <button type="submit" className="w-full px-3 py-2 bg-cf-accent hover:opacity-90 text-black text-xs font-semibold rounded transition">
@@ -88,8 +109,10 @@ function MatchLogPanel() {
           matchLogs.map((m) => (
             <div key={m.id} className="flex items-center justify-between bg-cf-bg border border-cf-border rounded-md px-3 py-2 text-xs">
               <div className="min-w-0">
-                <div className="text-white font-semibold truncate">vs {m.opponent} · {m.competition}</div>
-                <div className="text-slate-500">{m.minutesPlayed} min{m.position ? ` · ${m.position}` : ''}</div>
+                <div className="text-white font-semibold truncate">
+                  vs {m.opponent} · {m.competition} {m.teamResult && <span className="text-slate-400">({m.teamResult})</span>}
+                </div>
+                <div className="text-slate-500">{m.minutesPlayed} min{m.position ? ` · ${m.position}` : ''} · {m.selfRating}/5 self-rated</div>
               </div>
               <button onClick={() => deleteMatchLog(m.id)} className="text-slate-500 hover:text-red-400 shrink-0 ml-2">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -259,94 +282,6 @@ function ReelSegmentColumn({ title, clips }: { title: string; clips: ReturnType<
           clips.map((c) => (
             <div key={c.id} className="text-[11px] text-slate-300 truncate">
               {c.matchName} · {c.timestampStart}–{c.timestampEnd}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CoachPipelinePanel() {
-  const { coachContacts, addCoachContact, updateCoachStatus, markTapeSent, deleteCoachContact } = useLifeOSStore();
-  const [schoolName, setSchoolName] = useState('');
-  const [coachName, setCoachName] = useState('');
-  const [email, setEmail] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!schoolName.trim()) return;
-    addCoachContact({
-      schoolName: schoolName.trim(),
-      coachName: coachName.trim(),
-      email: email.trim(),
-      status: 'Not Contacted',
-      lastContactDate: null,
-      tapeSentDate: null,
-      notes: '',
-    });
-    setSchoolName('');
-    setCoachName('');
-    setEmail('');
-  };
-
-  return (
-    <div className="bg-cf-card border border-cf-border rounded-xl p-6">
-      <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-        <Send className="w-4 h-4 text-cf-accent" /> College Coach Pipeline
-      </h3>
-      <p className="text-xs text-slate-400 mb-4">Track outreach status per program.</p>
-
-      <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-2 mb-4">
-        <input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="School"
-          className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
-        <input value={coachName} onChange={(e) => setCoachName(e.target.value)} placeholder="Coach name"
-          className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email"
-          className="bg-cf-bg border border-cf-border rounded px-2 py-1.5 text-xs text-white focus:outline-cf-accent" />
-        <button type="submit" className="col-span-3 flex items-center justify-center gap-1.5 px-3 py-2 bg-cf-accent hover:opacity-90 text-black text-xs font-semibold rounded transition">
-          <Plus className="w-3.5 h-3.5" /> Add Contact
-        </button>
-      </form>
-
-      <div className="space-y-1.5 max-h-56 overflow-y-auto">
-        {coachContacts.length === 0 ? (
-          <p className="text-xs text-slate-500">No coach contacts yet.</p>
-        ) : (
-          coachContacts.map((c) => (
-            <div key={c.id} className="bg-cf-bg border border-cf-border rounded-md px-3 py-2 text-xs space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-white font-semibold truncate">{c.schoolName}</div>
-                  <div className="text-slate-500 truncate">{c.coachName}</div>
-                </div>
-                <select
-                  value={c.status}
-                  onChange={(e) => updateCoachStatus(c.id, e.target.value as CoachContactStatus)}
-                  className="bg-cf-card border border-cf-border rounded px-1.5 py-1 text-[10px] text-slate-300 shrink-0"
-                >
-                  {COACH_STATUSES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <button onClick={() => deleteCoachContact(c.id)} className="text-slate-500 hover:text-red-400 shrink-0">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-cf-border">
-                {c.tapeSentDate ? (
-                  <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-                    <CheckCircle2 className="w-3 h-3" /> Tape sent {new Date(c.tapeSentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => markTapeSent(c.id)}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-cf-accent hover:opacity-80"
-                  >
-                    <Film className="w-3 h-3" /> Mark Tape Sent
-                  </button>
-                )}
-              </div>
             </div>
           ))
         )}

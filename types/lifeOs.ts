@@ -44,8 +44,8 @@ export interface ACTSectionScore {
   current: number;
 }
 
-export type ACTRootCause = 'Content Gap' | 'Time Pressure' | 'Misread Stem' | 'Trap Answer';
-export const ACT_ROOT_CAUSES: ACTRootCause[] = ['Content Gap', 'Time Pressure', 'Misread Stem', 'Trap Answer'];
+export type ACTRootCause = 'Content Gap' | 'Pacing Panic' | 'Misread Stem' | 'Trap Answer';
+export const ACT_ROOT_CAUSES: ACTRootCause[] = ['Content Gap', 'Pacing Panic', 'Misread Stem', 'Trap Answer'];
 
 export interface ACTErrorLogEntry {
   id: string;
@@ -97,6 +97,22 @@ export interface ACTGradedItem {
   isCorrect: boolean | null;
 }
 
+// --- Official standard pacing (metronome) ---
+
+export interface ACTSectionPacing {
+  section: ACTSection;
+  questions: number;
+  minutes: number;
+  secondsPerQuestion: number;
+}
+
+export const ACT_SECTION_PACING: ACTSectionPacing[] = [
+  { section: 'English', questions: 50, minutes: 35, secondsPerQuestion: 42 },
+  { section: 'Math', questions: 45, minutes: 50, secondsPerQuestion: 67 },
+  { section: 'Reading', questions: 36, minutes: 40, secondsPerQuestion: 67 },
+  { section: 'Science', questions: 40, minutes: 40, secondsPerQuestion: 60 },
+];
+
 export const SECTION_REMEDIATION_TIPS: Record<ACTSection, string> = {
   English: 'Review comma usage, sentence boundaries, and rhetorical-skills questions (relevance, transitions).',
   Math: 'Re-derive the problem from scratch — check for sign errors, a misapplied formula, or a skipped units step.',
@@ -117,6 +133,8 @@ export interface MatchLog {
   position: string;
   tacticalNotes: string;
   filmReviewed: boolean;
+  teamResult: string;
+  selfRating: 1 | 2 | 3 | 4 | 5;
 }
 
 export const HIGHLIGHT_SKILLS = [
@@ -142,16 +160,25 @@ export interface HighlightClip {
   notes: string;
 }
 
-export type CoachContactStatus = 'Not Contacted' | 'Emailed' | 'Responded' | 'Following Up' | 'No Response';
+/** College Coach Communication CRM pipeline stages. */
+export type CoachPipelineStage = 'Prospecting' | 'Initial Email Sent' | 'Film Sent' | 'Campus Visit' | 'Offer / Closing';
+export const COACH_PIPELINE_STAGES: CoachPipelineStage[] = [
+  'Prospecting',
+  'Initial Email Sent',
+  'Film Sent',
+  'Campus Visit',
+  'Offer / Closing',
+];
 
 export interface CoachContact {
   id: string;
   schoolName: string;
   coachName: string;
   email: string;
-  status: CoachContactStatus;
+  status: CoachPipelineStage;
   lastContactDate: string | null;
   tapeSentDate: string | null;
+  nextFollowUpDate: string | null;
   notes: string;
 }
 
@@ -216,7 +243,7 @@ export interface ColdEmailBuilderInput {
 
 export type CampusSize = 'Small' | 'Medium' | 'Large';
 export type LocationVibe = 'Urban' | 'Suburban' | 'Rural';
-export type SelectivityTier = 'Reach' | 'Target' | 'Safety';
+export type SelectivityTier = 'Extreme Reach' | 'Reach' | 'Target' | 'Safety';
 
 export interface UniversityProfile {
   id: string;
@@ -267,6 +294,43 @@ export interface AdvocacyDraft {
   title: string;
   content: string;
   updatedAt: string;
+}
+
+// --- Brutal Admissions Evaluator: student profile & red-flag evaluation ---
+
+export type IBLevel = 'HL' | 'SL';
+
+export interface IBCourseEntry {
+  name: string;
+  level: IBLevel;
+}
+
+export interface ExtracurricularEntry {
+  description: string;
+  impactLevel: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface StudentProfile {
+  unweightedGPA: number;
+  weightedGPA: number;
+  ibCourses: IBCourseEntry[];
+  actComposite: number;
+  topExtracurriculars: ExtracurricularEntry[];
+}
+
+export interface AdmissionsEvaluation {
+  universityId: string;
+  tier: SelectivityTier;
+  chancePct: number;
+  redFlags: string[];
+}
+
+// --- Common App activity description optimizer ---
+
+export interface CommonAppActivityEntry {
+  id: string;
+  rawText: string;
+  optimizedText: string;
 }
 
 export const COLD_EMAIL_TEMPLATES: ColdEmailTemplate[] = [
