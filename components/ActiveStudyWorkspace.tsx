@@ -239,13 +239,22 @@ function NotesReviewPanel({ notes, onComplete }: { notes: SynthesisNote[]; onCom
 // Flash Cards — keyboard-driven two-column active recall
 // ---------------------------------------------------------------------------
 
-function FlashcardPanel({ cards, onComplete }: { cards: DrillCard[]; onComplete: (score: number) => void }) {
+export function FlashcardPanel({
+  cards,
+  onComplete,
+  onMissedItem,
+}: {
+  cards: DrillCard[];
+  onComplete: (score: number) => void;
+  onMissedItem?: (card: DrillCard) => void;
+}) {
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
 
   const handleScore = (isCorrect: boolean) => {
+    if (!isCorrect) onMissedItem?.(cards[idx]);
     const nextCorrect = correct + (isCorrect ? 1 : 0);
     setCorrect(nextCorrect);
     if (idx + 1 < cards.length) {
@@ -352,7 +361,15 @@ function FlashcardPanel({ cards, onComplete }: { cards: DrillCard[]; onComplete:
 // MCQ Quiz — 4-option diagnostic with instant feedback
 // ---------------------------------------------------------------------------
 
-function MCQPanel({ questions, onComplete }: { questions: MCQQuestion[]; onComplete: (score: number) => void }) {
+export function MCQPanel({
+  questions,
+  onComplete,
+  onMissedItem,
+}: {
+  questions: MCQQuestion[];
+  onComplete: (score: number) => void;
+  onMissedItem?: (question: MCQQuestion) => void;
+}) {
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
@@ -382,6 +399,7 @@ function MCQPanel({ questions, onComplete }: { questions: MCQQuestion[]; onCompl
     if (selected !== null) return;
     setSelected(optionIdx);
     if (optionIdx === q.correctIndex) setCorrectCount((c) => c + 1);
+    else onMissedItem?.(q);
   };
 
   const handleNext = () => {
@@ -451,7 +469,15 @@ function MCQPanel({ questions, onComplete }: { questions: MCQQuestion[]; onCompl
 
 const SPEED_DRILL_SECONDS = 10;
 
-function SpeedDrillPanel({ cards, onComplete }: { cards: DrillCard[]; onComplete: (score: number) => void }) {
+export function SpeedDrillPanel({
+  cards,
+  onComplete,
+  onMissedItem,
+}: {
+  cards: DrillCard[];
+  onComplete: (score: number) => void;
+  onMissedItem?: (card: DrillCard) => void;
+}) {
   const [started, setStarted] = useState(false);
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -483,6 +509,7 @@ function SpeedDrillPanel({ cards, onComplete }: { cards: DrillCard[]; onComplete
   }
 
   const handleScore = (isCorrect: boolean) => {
+    if (!isCorrect) onMissedItem?.(cards[idx]);
     const nextCorrect = correct + (isCorrect ? 1 : 0);
     setCorrect(nextCorrect);
     if (idx + 1 < cards.length) {
@@ -575,7 +602,7 @@ function SpeedDrillPanel({ cards, onComplete }: { cards: DrillCard[]; onComplete
 // Free Response — scenario / short-answer with expandable markscheme
 // ---------------------------------------------------------------------------
 
-function FreeResponsePanel({ prompts, onComplete }: { prompts: FreeResponsePrompt[]; onComplete: (score: number) => void }) {
+export function FreeResponsePanel({ prompts, onComplete }: { prompts: FreeResponsePrompt[]; onComplete: (score: number) => void }) {
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState('');
   const [submitted, setSubmitted] = useState(false);

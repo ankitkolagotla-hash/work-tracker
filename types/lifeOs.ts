@@ -13,12 +13,11 @@ export type CourseWorkflow = 'DeepStudy' | 'ExecutiveReview';
 export const COURSE_WORKFLOWS: Record<string, CourseWorkflow> = {
   'ib-math-hl': 'DeepStudy',
   'ib-bio': 'DeepStudy',
-  'ib-ee': 'DeepStudy',
   'ib-econ': 'ExecutiveReview',
   'ib-bus': 'ExecutiveReview',
   civics: 'ExecutiveReview',
-  cw: 'ExecutiveReview',
-  'ib-french-sl': 'ExecutiveReview',
+  'lit-cw': 'ExecutiveReview',
+  'ib-french': 'ExecutiveReview',
 };
 
 export function getCourseWorkflow(courseId: string): CourseWorkflow {

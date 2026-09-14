@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import { useLifeOSStore } from '../store/useLifeOSStore';
 import { HIGHLIGHT_SKILLS, HighlightSkill, TrainingSessionType } from '../types/lifeOs';
 import { sequenceReel } from '../lib/reelSequencer';
-import { RecruitingCrmView } from './RecruitingCrmView';
 import { useSystemDate } from '../store/useSystemDateStore';
 import { Shirt, Film, Dumbbell, Trash2, Clapperboard, Star } from 'lucide-react';
 
@@ -17,7 +16,6 @@ export const AthleticsHub: React.FC = () => {
         <HighlightReelPanel />
       </div>
       <ReelSequencerPanel />
-      <RecruitingCrmView />
       <TrainingLogPanel />
     </div>
   );

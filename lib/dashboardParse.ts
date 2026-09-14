@@ -52,13 +52,15 @@ interface CourseHeaderRule {
 }
 
 const COURSE_HEADER_RULES: CourseHeaderRule[] = [
-  { pattern: /1\.\s*CREATIVE WRITING/i, courseId: 'cw' },
+  { pattern: /1\.\s*CREATIVE WRITING|LITERATURE\s*&?\s*CREATIVE WRITING/i, courseId: 'lit-cw' },
   { pattern: /2\.\s*IB ECONOMICS/i, courseId: 'ib-econ' },
   { pattern: /3\.\s*CIVICS/i, courseId: 'civics' },
   { pattern: /4\.\s*IB HL\s*2\s*MATH/i, courseId: 'ib-math-hl' },
-  { pattern: /5\.\s*IB SL FRENCH/i, courseId: 'ib-french-sl' },
+  { pattern: /5\.\s*IB SL FRENCH/i, courseId: 'ib-french' },
   { pattern: /6\.\s*IB BIOLOGY/i, courseId: 'ib-bio' },
-  { pattern: /IBDP EXTENDED ESSAY/i, courseId: 'ib-ee' },
+  // IBDP Extended Essay is no longer an independent course — any legacy Canvas
+  // header for it maps to a Literature & Creative Writing assignment instead.
+  { pattern: /IBDP EXTENDED ESSAY/i, courseId: 'lit-cw' },
 ];
 
 function matchCourseHeader(line: string): string | null {
@@ -285,7 +287,7 @@ function parseFreeformLines(raw: string, fallbackYear: number): ParsedScheduleIt
     items.push({
       title,
       type: classifyAssessmentType(line),
-      courseId: course?.id ?? REGISTERED_COURSES[5].id,
+      courseId: course?.id ?? REGISTERED_COURSES.find((c) => c.id === 'ib-bio')!.id,
       dueDateISO: dateInfo.iso,
       points: pointsMatch ? Math.round(Number(pointsMatch[1])) : 10,
     });

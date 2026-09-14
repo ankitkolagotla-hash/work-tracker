@@ -11,14 +11,13 @@ export interface CourseRef {
 }
 
 export const REGISTERED_COURSES: CourseRef[] = [
-  { id: 'cw', name: 'Creative Writing', code: 'CW-S1', color: '#F472B6' },
-  { id: 'ib-econ', name: 'IB Economics', code: 'ECON-S1', color: '#38BDF8' },
-  { id: 'civics', name: 'Civics', code: 'CIV-S1', color: '#FBBF24' },
-  { id: 'ib-math-hl', name: 'IB HL 2 Math', code: 'MATH-HL2', color: '#818CF8' },
-  { id: 'ib-french-sl', name: 'IB SL French', code: 'FR-SL', color: '#A78BFA' },
-  { id: 'ib-bio', name: 'IB Biology', code: 'BIO-HL', color: '#34D399' },
-  { id: 'ib-bus', name: 'IB Business', code: 'BUS-HL', color: '#FB923C' },
-  { id: 'ib-ee', name: 'IBDP Extended Essay', code: 'EE', color: '#94A3B8' },
+  { id: 'ib-bio', name: 'IB Biology HL', code: 'BIO-HL', color: '#10B981' },
+  { id: 'ib-math-hl', name: 'IB HL 2 Math', code: 'MATH-HL2', color: '#6366F1' },
+  { id: 'ib-econ', name: 'IB Economics SL', code: 'ECON-SL', color: '#0EA5E9' },
+  { id: 'ib-bus', name: 'IB Business Management', code: 'BUS-HL', color: '#F59E0B' },
+  { id: 'ib-french', name: 'IB SL French', code: 'FR-SL', color: '#8B5CF6' },
+  { id: 'civics', name: 'Civics', code: 'CIV-S1', color: '#EAB308' },
+  { id: 'lit-cw', name: 'Literature & Creative Writing', code: 'LIT-CW', color: '#EC4899' },
 ];
 
 // --- Study pack: the multi-format content generated from pasted materials ---
@@ -110,4 +109,14 @@ export interface StudySessionLog {
   methodUsed: StudyMethod;
   performanceScore: number;
   summarySnippet: string;
+}
+
+/** A flashcard/MCQ item missed during a Smart Intake drill, captured for mandatory follow-up review. */
+export interface NeedsReviewItem {
+  id: string;
+  assessmentId: string;
+  courseId: string;
+  prompt: string;
+  answer: string;
+  addedAt: string;
 }

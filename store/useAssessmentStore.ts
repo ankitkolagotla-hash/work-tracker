@@ -8,6 +8,7 @@ import {
   StudyPacing,
   DayOfWeek,
   REGISTERED_COURSES,
+  NeedsReviewItem,
 } from '../types/assessment';
 import { generateStudyPack, EMPTY_STUDY_PACK } from '../lib/studyGenerator';
 import { isPast } from '../lib/date';
@@ -25,6 +26,8 @@ interface AssessmentState {
   verifiedBlocks: string[];
   /** IDs pulled ahead into today's active sprint queue — a work-ahead buffer that never touches the real dueDate. */
   queuedAheadIds: string[];
+  /** Missed flashcard/MCQ items captured from Smart Intake drills, queued for mandatory follow-up review. */
+  needsReviewItems: NeedsReviewItem[];
 
   addAssessment: (data: Omit<Assessment, 'id' | 'readinessIndex' | 'studyPack'>) => void;
   importCanvasEvents: (events: Assessment[], todayStr?: string) => void;
@@ -40,6 +43,8 @@ interface AssessmentState {
   /** Bulk-flips a set of assessments to Completed (used by the Canvas sync engine) — touches only status/completedAt, nothing else. */
   markAssessmentsCompleted: (ids: string[]) => void;
   toggleQueuedAhead: (id: string) => void;
+  addNeedsReviewItem: (item: Omit<NeedsReviewItem, 'id' | 'addedAt'>) => void;
+  removeNeedsReviewItem: (id: string) => void;
 }
 
 const DEFAULT_PLAN = {
@@ -67,7 +72,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           id: 'seed-cw-outline',
           title: 'Short Story Outline',
           type: 'Assignment',
-          courseId: 'cw',
+          courseId: 'lit-cw',
           unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-11T10:00:00.000Z',
           status: 'Upcoming',
@@ -81,7 +86,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           id: 'seed-cw-character',
           title: 'Character Creation',
           type: 'Assignment',
-          courseId: 'cw',
+          courseId: 'lit-cw',
           unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-11T22:00:00.000Z',
           status: 'Upcoming',
@@ -177,7 +182,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           id: 'seed-french-trois-ours',
           title: 'Les Trois Ours',
           type: 'Assignment',
-          courseId: 'ib-french-sl',
+          courseId: 'ib-french',
           unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-14T23:59:00.000Z',
           status: 'Upcoming',
@@ -191,7 +196,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           id: 'seed-french-structures2',
           title: 'Structures II - Passé Composé',
           type: 'Assignment',
-          courseId: 'ib-french-sl',
+          courseId: 'ib-french',
           unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-14T23:59:00.000Z',
           status: 'Upcoming',
@@ -267,7 +272,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           id: 'seed-cw-short-story',
           title: 'Short Story',
           type: 'Assignment',
-          courseId: 'cw',
+          courseId: 'lit-cw',
           unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-18T23:59:00.000Z',
           status: 'Upcoming',
@@ -279,9 +284,9 @@ export const useAssessmentStore = create<AssessmentState>()(
         },
         {
           id: 'seed-ee-rough-draft',
-          title: 'Rough Draft — 3,000 words',
+          title: 'Extended Essay: Rough Draft — 3,000 words',
           type: 'Assignment',
-          courseId: 'ib-ee',
+          courseId: 'lit-cw',
           unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-18T07:00:00.000Z',
           status: 'Upcoming',
@@ -537,6 +542,16 @@ export const useAssessmentStore = create<AssessmentState>()(
             : [...state.queuedAheadIds, id],
         }));
       },
+
+      needsReviewItems: [],
+      addNeedsReviewItem: (item) => {
+        set((state) => ({
+          needsReviewItems: [{ ...item, id: `review-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, addedAt: new Date().toISOString() }, ...state.needsReviewItems],
+        }));
+      },
+      removeNeedsReviewItem: (id) => {
+        set((state) => ({ needsReviewItems: state.needsReviewItems.filter((r) => r.id !== id) }));
+      },
     }),
     {
       name: 'chronoflow-store',
@@ -555,6 +570,7 @@ export const useAssessmentStore = create<AssessmentState>()(
           activeSession: p.activeSession ?? currentState.activeSession,
           verifiedBlocks: p.verifiedBlocks ?? currentState.verifiedBlocks,
           queuedAheadIds: p.queuedAheadIds ?? currentState.queuedAheadIds,
+          needsReviewItems: p.needsReviewItems ?? currentState.needsReviewItems,
         };
       },
     }
