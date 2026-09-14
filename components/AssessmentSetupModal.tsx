@@ -38,7 +38,7 @@ const DAY_ABBR: Record<DayOfWeek, string> = {
 export const AssessmentSetupModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { addAssessment } = useAssessmentStore();
   const [title, setTitle] = useState('');
-  const [courseId, setCourseId] = useState(REGISTERED_COURSES[5].id);
+  const [courseId, setCourseId] = useState(REGISTERED_COURSES[0].id);
   const [type, setType] = useState<AssessmentType>('Quiz');
   const [dueDate, setDueDate] = useState('');
   const [points, setPoints] = useState(35);

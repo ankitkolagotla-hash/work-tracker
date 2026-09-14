@@ -7,6 +7,7 @@ import { REGISTERED_COURSES, DrillCard, MCQQuestion, StudyMethod } from '../type
 import { humanizeDraft } from '../lib/humanizer';
 import { buildStudyRoadmap } from '../lib/studyRoadmap';
 import { FlashcardPanel, MCQPanel, SpeedDrillPanel, FreeResponsePanel } from './ActiveStudyWorkspace';
+import { CourseReassignSelect } from './CourseReassignSelect';
 import {
   X,
   Sparkles,
@@ -114,12 +115,15 @@ export const SmartIntakeDrawer: React.FC<{ assessmentId: string; onClose: () => 
       >
         <div className="flex justify-between items-start mb-5 pb-4 border-b border-cf-border">
           <div>
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border"
-              style={{ color: course?.color, borderColor: `${course?.color}40`, backgroundColor: `${course?.color}10` }}
-            >
-              {course?.name ?? 'Class'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border"
+                style={{ color: course?.color, borderColor: `${course?.color}40`, backgroundColor: `${course?.color}10` }}
+              >
+                {course?.name ?? 'Class'}
+              </span>
+              <CourseReassignSelect assessmentId={assessmentId} courseId={assessment.courseId} />
+            </div>
             <h2 className="text-lg font-bold text-white mt-2">{assessment.title}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
               {assessment.type} · Due {assessment.dueDate.split('T')[0]} · {assessment.points} pts

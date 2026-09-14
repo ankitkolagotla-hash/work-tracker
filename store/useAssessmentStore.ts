@@ -13,6 +13,7 @@ import {
 import { generateStudyPack, EMPTY_STUDY_PACK } from '../lib/studyGenerator';
 import { isPast } from '../lib/date';
 import { useSystemDateStore, resolveSystemDate } from './useSystemDateStore';
+import { useToastStore } from './useToastStore';
 
 interface AssessmentState {
   assessments: Assessment[];
@@ -45,6 +46,10 @@ interface AssessmentState {
   toggleQueuedAhead: (id: string) => void;
   addNeedsReviewItem: (item: Omit<NeedsReviewItem, 'id' | 'addedAt'>) => void;
   removeNeedsReviewItem: (id: string) => void;
+  /** Reassigns a task to a different course on demand — never re-derived automatically once set. */
+  reassignCourse: (assessmentId: string, courseId: string) => void;
+  /** Toggles one option inside a "pick N of M" checklist task, capped at checklistPickLimit. */
+  toggleChecklistItem: (assessmentId: string, itemId: string) => void;
 }
 
 const DEFAULT_PLAN = {
@@ -127,25 +132,28 @@ export const useAssessmentStore = create<AssessmentState>()(
 
         // --- Sunday, September 13, 2026 ---
         {
-          id: 'seed-bio-ab-activities',
-          title: 'A&B Activities',
+          id: 'seed-bio-ab-weekly',
+          title: 'IB Biology: Weekly A&B Activity (Pick 2 of 8 Options)',
           type: 'Assignment',
           courseId: 'ib-bio',
-          unitsCovered: [
-            'Dark Matter',
-            'A Passion for Order',
-            'History of Classification',
-            'Offensive Species Names',
-            "What's in a Name",
-            'AI Consciousness',
-            'Animal Consciousness',
-          ],
+          unitsCovered: ['Direct Schedule Seed'],
           dueDate: '2026-09-13T22:00:00.000Z',
           status: 'Upcoming',
           points: 0,
           readinessIndex: 0,
           pastedMaterials: '',
           studyPack: EMPTY_STUDY_PACK,
+          checklist: [
+            { id: 'ab-1', label: 'Dark Matter', done: false },
+            { id: 'ab-2', label: 'A Passion for Order', done: false },
+            { id: 'ab-3', label: 'History of Classification', done: false },
+            { id: 'ab-4', label: 'Offensive Species Names', done: false },
+            { id: 'ab-5', label: "What's in a Name", done: false },
+            { id: 'ab-6', label: 'AI Consciousness', done: false },
+            { id: 'ab-7', label: 'Animal Consciousness', done: false },
+            { id: 'ab-8', label: 'Plant Consciousness', done: false },
+          ],
+          checklistPickLimit: 2,
           ...DEFAULT_PLAN,
         },
         {
@@ -510,18 +518,26 @@ export const useAssessmentStore = create<AssessmentState>()(
 
       // Instant complete toggle usable directly from Daily/Weekly/Monthly views,
       // independent of the study workspace's own readiness-based status changes.
+      // Toggling back off (the archive's "instant restore") flips straight back
+      // to Upcoming, which is what puts it back on the active daily schedule.
       toggleTaskComplete: (id) => {
+        const target = get().assessments.find((a) => a.id === id);
+        if (!target) return;
+        const nowCompleting = target.status !== 'Completed';
         set((state) => ({
-          assessments: state.assessments.map((a) => {
-            if (a.id !== id) return a;
-            const nowCompleting = a.status !== 'Completed';
-            return {
-              ...a,
-              status: nowCompleting ? 'Completed' : 'Upcoming',
-              completedAt: nowCompleting ? resolveSystemDate(useSystemDateStore.getState()) : null,
-            };
-          }),
+          assessments: state.assessments.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  status: nowCompleting ? 'Completed' : 'Upcoming',
+                  completedAt: nowCompleting ? resolveSystemDate(useSystemDateStore.getState()) : null,
+                }
+              : a
+          ),
         }));
+        if (nowCompleting) {
+          useToastStore.getState().addToast(`"${target.title}" marked done`, id);
+        }
       },
 
       markAssessmentsCompleted: (ids) => {
@@ -551,6 +567,29 @@ export const useAssessmentStore = create<AssessmentState>()(
       },
       removeNeedsReviewItem: (id) => {
         set((state) => ({ needsReviewItems: state.needsReviewItems.filter((r) => r.id !== id) }));
+      },
+
+      reassignCourse: (assessmentId, courseId) => {
+        set((state) => ({
+          assessments: state.assessments.map((a) => (a.id === assessmentId ? { ...a, courseId } : a)),
+        }));
+      },
+
+      toggleChecklistItem: (assessmentId, itemId) => {
+        set((state) => ({
+          assessments: state.assessments.map((a) => {
+            if (a.id !== assessmentId || !a.checklist) return a;
+            const item = a.checklist.find((c) => c.id === itemId);
+            if (!item) return a;
+            const doneCount = a.checklist.filter((c) => c.done).length;
+            // At the pick cap and trying to add another — ignore rather than bump one off.
+            if (!item.done && a.checklistPickLimit !== undefined && doneCount >= a.checklistPickLimit) return a;
+            return {
+              ...a,
+              checklist: a.checklist.map((c) => (c.id === itemId ? { ...c, done: !c.done } : c)),
+            };
+          }),
+        }));
       },
     }),
     {

@@ -16,6 +16,7 @@ import { BackupRestoreModal } from '../components/BackupRestoreModal';
 import { FocusModeOverlay } from '../components/FocusModeOverlay';
 import { SystemDateControl } from '../components/SystemDateControl';
 import { CalendarSyncDropZone } from '../components/CalendarSyncDropZone';
+import { CompletedArchiveDrawer } from '../components/CompletedArchiveDrawer';
 import {
   Plus,
   ClipboardPaste,
@@ -24,6 +25,7 @@ import {
   GraduationCap,
   Shirt,
   DatabaseBackup,
+  Archive,
 } from 'lucide-react';
 
 type NavTab = 'assignments' | 'act' | 'athletics' | 'college';
@@ -40,6 +42,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
   return (
     <main className="min-h-screen bg-cf-bg text-slate-100 p-6 md:p-12">
@@ -53,6 +56,12 @@ export default function Home() {
           <div className="flex flex-wrap items-center gap-3">
             <SystemDateControl />
             <ThemeSwitcher />
+            <button
+              onClick={() => setIsArchiveOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 rounded-lg text-xs font-semibold tracking-wider text-slate-300 transition"
+            >
+              <Archive className="w-3.5 h-3.5 text-cf-accent" /> Completed Archive
+            </button>
             <button
               onClick={() => setIsBackupModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-cf-card border border-cf-border hover:border-slate-600 rounded-lg text-xs font-semibold tracking-wider text-slate-300 transition"
@@ -112,6 +121,7 @@ export default function Home() {
         <AssessmentSetupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         <DashboardPasteModal isOpen={isPasteModalOpen} onClose={() => setIsPasteModalOpen(false)} />
         <BackupRestoreModal isOpen={isBackupModalOpen} onClose={() => setIsBackupModalOpen(false)} />
+        {isArchiveOpen && <CompletedArchiveDrawer onClose={() => setIsArchiveOpen(false)} />}
       </div>
       <FocusModeOverlay />
     </main>

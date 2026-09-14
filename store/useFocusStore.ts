@@ -27,6 +27,8 @@ interface FocusState {
   volume: number;
   isAudioPlaying: boolean;
   focusModeActive: boolean;
+  /** Currently loaded embed.music.apple.com URL for the Apple Music Web Player, or '' when none chosen yet. */
+  appleMusicEmbedUrl: string;
 
   startSprint: (presetId: SprintPresetId) => void;
   tickSprint: () => void;
@@ -35,6 +37,7 @@ interface FocusState {
   setVolume: (v: number) => void;
   setAudioPlaying: (playing: boolean) => void;
   setFocusModeActive: (active: boolean) => void;
+  setAppleMusicEmbedUrl: (url: string) => void;
 }
 
 export const useFocusStore = create<FocusState>()(
@@ -47,6 +50,7 @@ export const useFocusStore = create<FocusState>()(
       volume: 0.4,
       isAudioPlaying: false,
       focusModeActive: false,
+      appleMusicEmbedUrl: '',
 
       startSprint: (presetId) => {
         const preset = SPRINT_PRESETS.find((p) => p.id === presetId);
@@ -77,10 +81,11 @@ export const useFocusStore = create<FocusState>()(
       setVolume: (v) => set({ volume: v }),
       setAudioPlaying: (playing) => set({ isAudioPlaying: playing }),
       setFocusModeActive: (active) => set({ focusModeActive: active }),
+      setAppleMusicEmbedUrl: (url) => set({ appleMusicEmbedUrl: url }),
     }),
     {
       name: 'chronoflow-focus',
-      partialize: (state) => ({ audioPresetId: state.audioPresetId, volume: state.volume }),
+      partialize: (state) => ({ audioPresetId: state.audioPresetId, volume: state.volume, appleMusicEmbedUrl: state.appleMusicEmbedUrl }),
     }
   )
 );

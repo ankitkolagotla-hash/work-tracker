@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { FocusTicker } from '../components/FocusTicker';
-import { AudioFocusHub } from '../components/AudioFocusHub';
+import { AppleMusicPlayer } from '../components/AppleMusicPlayer';
 import { OpticFlowRest } from '../components/OpticFlowRest';
+import { ToastContainer } from '../components/ToastContainer';
 
 export const metadata: Metadata = {
   title: 'ChronoFlow OS',
@@ -21,7 +22,8 @@ export default function RootLayout({
         <ThemeProvider>
           <FocusTicker />
           {children}
-          <AudioFocusHub />
+          <ToastContainer />
+          <AppleMusicPlayer />
           <OpticFlowRest />
         </ThemeProvider>
       </body>

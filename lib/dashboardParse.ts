@@ -51,21 +51,32 @@ interface CourseHeaderRule {
   courseId: string;
 }
 
+// Strict, priority-ordered prefix/keyword rules. Each is checked in order and
+// the FIRST match wins — this is the only place courseId is ever assigned
+// during parsing, so body text or descriptions further down a block can never
+// override it (e.g. a Math HL 2 block mentioning "biology-like systems" in
+// its description still resolves to ib-math-hl, never ib-bio).
 const COURSE_HEADER_RULES: CourseHeaderRule[] = [
-  { pattern: /1\.\s*CREATIVE WRITING|LITERATURE\s*&?\s*CREATIVE WRITING/i, courseId: 'lit-cw' },
-  { pattern: /2\.\s*IB ECONOMICS/i, courseId: 'ib-econ' },
-  { pattern: /3\.\s*CIVICS/i, courseId: 'civics' },
-  { pattern: /4\.\s*IB HL\s*2\s*MATH/i, courseId: 'ib-math-hl' },
-  { pattern: /5\.\s*IB SL FRENCH/i, courseId: 'ib-french' },
-  { pattern: /6\.\s*IB BIOLOGY/i, courseId: 'ib-bio' },
+  { pattern: /^\s*1\.|CREATIVE WRITING/i, courseId: 'lit-cw' },
+  { pattern: /^\s*2\.|IB ECONOMICS/i, courseId: 'ib-econ' },
+  { pattern: /^\s*3\.|CIVICS/i, courseId: 'civics' },
+  { pattern: /^\s*4\.|IB HL\s*2\s*MATH|\bMATH\b/i, courseId: 'ib-math-hl' },
+  { pattern: /^\s*5\.|\bFRENCH\b/i, courseId: 'ib-french' },
+  { pattern: /^\s*6\.|IB BIOLOGY/i, courseId: 'ib-bio' },
+  { pattern: /IB BUSINESS/i, courseId: 'ib-bus' },
   // IBDP Extended Essay is no longer an independent course — any legacy Canvas
   // header for it maps to a Literature & Creative Writing assignment instead.
   { pattern: /IBDP EXTENDED ESSAY/i, courseId: 'lit-cw' },
 ];
 
-function matchCourseHeader(line: string): string | null {
-  const rule = COURSE_HEADER_RULES.find((r) => r.pattern.test(line));
+/** Resolves a courseId from the strict rule list above, or null if none match. */
+function resolveCourseIdFromText(text: string): string | null {
+  const rule = COURSE_HEADER_RULES.find((r) => r.pattern.test(text));
   return rule ? rule.courseId : null;
+}
+
+function matchCourseHeader(line: string): string | null {
+  return resolveCourseIdFromText(line);
 }
 
 const MONTH_DAY_RE = new RegExp(`^(${MONTH_PATTERN})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})?$`, 'i');
@@ -250,8 +261,8 @@ function extractInlineDate(line: string, fallbackYear: number): InlineDateMatch 
 }
 
 function matchInlineCourse(line: string): CourseRef | undefined {
-  const lower = line.toLowerCase();
-  return REGISTERED_COURSES.find((c) => lower.includes(c.name.toLowerCase()) || lower.includes(c.code.toLowerCase()));
+  const courseId = resolveCourseIdFromText(line);
+  return courseId ? REGISTERED_COURSES.find((c) => c.id === courseId) : undefined;
 }
 
 function extractInlineTitle(line: string, dateMatchText: string, course?: CourseRef): string {

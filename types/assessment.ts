@@ -79,6 +79,13 @@ export const STUDY_PACING_OPTIONS: StudyPacing[] = ['50m Ultradian', '25m Pomodo
 export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 export type DayOfWeek = (typeof DAYS_OF_WEEK)[number];
 
+/** One optional pick inside a "pick N of M" consolidated task (e.g. IB Biology's weekly A&B activity). */
+export interface ChecklistOption {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export interface Assessment {
   id: string;
   title: string;
@@ -98,6 +105,9 @@ export interface Assessment {
   totalPrepTimeMinutes: number;
   studySessionPacing: StudyPacing;
   targetStudyDays: DayOfWeek[];
+  /** Optional "pick N of M" checklist for a consolidated task (e.g. Biology's weekly A&B activity). */
+  checklist?: ChecklistOption[];
+  checklistPickLimit?: number;
 }
 
 export interface StudySessionLog {

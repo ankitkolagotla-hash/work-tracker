@@ -1,14 +1,7 @@
 'use client';
 import React from 'react';
 import { useFocusStore, SPRINT_PRESETS, SprintPresetId } from '../store/useFocusStore';
-import { focusAudioEngine, AudioPresetId } from '../lib/audio';
 import { Zap, Brain, GraduationCap, Square, Maximize2 } from 'lucide-react';
-
-const SPRINT_AUDIO_MAP: Record<SprintPresetId, AudioPresetId> = {
-  ultradian: 'atmospheric-drone',
-  cognitive: 'gamma-40hz',
-  'exam-sim': 'brown-noise',
-};
 
 const SPRINT_ICONS: Record<SprintPresetId, React.ElementType> = {
   ultradian: Zap,
@@ -23,15 +16,10 @@ function formatMMSS(secs: number): string {
 }
 
 export const SprintLauncher: React.FC = () => {
-  const { sprintPresetId, phase, secondsRemaining, volume, startSprint, endSprint, setAudioPreset, setAudioPlaying, setFocusModeActive } =
-    useFocusStore();
+  const { sprintPresetId, phase, secondsRemaining, startSprint, endSprint, setFocusModeActive } = useFocusStore();
 
   const handleStart = (id: SprintPresetId) => {
     startSprint(id);
-    const audioId = SPRINT_AUDIO_MAP[id];
-    setAudioPreset(audioId);
-    focusAudioEngine.start(audioId, volume);
-    setAudioPlaying(true);
     // Ultradian 50/10 blocks drop straight into distraction-free Focus Mode;
     // other sprint types can still enter it manually below.
     if (id === 'ultradian') setFocusModeActive(true);
@@ -39,8 +27,6 @@ export const SprintLauncher: React.FC = () => {
 
   const handleEnd = () => {
     endSprint();
-    focusAudioEngine.stop();
-    setAudioPlaying(false);
   };
 
   const activePreset = SPRINT_PRESETS.find((p) => p.id === sprintPresetId);

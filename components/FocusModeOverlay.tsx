@@ -15,9 +15,9 @@ function formatMMSS(secs: number): string {
 /**
  * Distraction-free fullscreen view for an active 50/10 ultradian block (or
  * any sprint): hides every nav bar and sidebar, leaving only the timer, a
- * chosen current task, a scratchpad, and the focus audio controls (the
- * existing bottom AudioFocusHub bar, which stays visible beneath this
- * overlay by z-index rather than being duplicated here).
+ * chosen current task, and a scratchpad — the persistent Apple Music player
+ * bar stays visible beneath this overlay by z-index rather than being
+ * duplicated here.
  */
 export const FocusModeOverlay: React.FC = () => {
   const { focusModeActive, setFocusModeActive, phase, secondsRemaining, sprintPresetId } = useFocusStore();
