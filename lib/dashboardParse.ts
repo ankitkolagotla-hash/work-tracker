@@ -24,6 +24,15 @@ export interface ParsedScheduleItem {
   courseId: string;
   dueDateISO: string;
   points: number;
+  attachmentUrl?: string;
+}
+
+const URL_RE = /https?:\/\/[^\s)"'<>]+/i;
+
+/** Pulls the first http(s) link out of raw text — a Canvas-hosted worksheet/document link, when present. */
+export function extractAttachmentUrl(text: string): string | undefined {
+  const match = text.match(URL_RE);
+  return match ? match[0].replace(/[.,;:]+$/, '') : undefined;
 }
 
 /** Quiz / Test / Cumulative / Discussion / Annotate / Outline / Draft classification, per the house rules. */
@@ -209,6 +218,7 @@ function parseCanvasStructuredText(raw: string, fallbackYear: number): ParsedSch
           courseId,
           dueDateISO,
           points,
+          attachmentUrl: extractAttachmentUrl(blockText),
         });
       }
 
@@ -301,6 +311,7 @@ function parseFreeformLines(raw: string, fallbackYear: number): ParsedScheduleIt
       courseId: course?.id ?? REGISTERED_COURSES.find((c) => c.id === 'ib-bio')!.id,
       dueDateISO: dateInfo.iso,
       points: pointsMatch ? Math.round(Number(pointsMatch[1])) : 10,
+      attachmentUrl: extractAttachmentUrl(line),
     });
   }
 

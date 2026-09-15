@@ -1,6 +1,6 @@
 import { Assessment, AssessmentType, CourseRef, REGISTERED_COURSES } from '../types/assessment';
 import { EMPTY_STUDY_PACK } from './studyGenerator';
-import { classifyAssessmentType } from './dashboardParse';
+import { classifyAssessmentType, extractAttachmentUrl } from './dashboardParse';
 import { toDateOnly } from './date';
 
 /**
@@ -18,6 +18,7 @@ export interface ParsedCalendarEvent {
   dueDateISO: string;
   points: number;
   description: string;
+  attachmentUrl?: string;
 }
 
 /** Tag on `unitsCovered` marking an assessment as sourced from the live Canvas feed, so the sync engine never touches manually-created or pasted-in cards. */
@@ -66,6 +67,7 @@ export function parseICSFeed(raw: string): ParsedCalendarEvent[] {
   let inEvent = false;
   let summary = '';
   let description = '';
+  let url = '';
   let dtstart: string | null = null;
 
   lines.forEach((line) => {
@@ -73,6 +75,7 @@ export function parseICSFeed(raw: string): ParsedCalendarEvent[] {
       inEvent = true;
       summary = '';
       description = '';
+      url = '';
       dtstart = null;
       return;
     }
@@ -87,6 +90,7 @@ export function parseICSFeed(raw: string): ParsedCalendarEvent[] {
           dueDateISO: dtstart,
           points: 0,
           description,
+          attachmentUrl: url || extractAttachmentUrl(description),
         });
       }
       inEvent = false;
@@ -102,6 +106,11 @@ export function parseICSFeed(raw: string): ParsedCalendarEvent[] {
     const descMatch = line.match(/^DESCRIPTION(?:;[^:]*)?:(.*)$/i);
     if (descMatch) {
       description = unescapeICSText(descMatch[1]);
+      return;
+    }
+    const urlMatch = line.match(/^URL(?:;[^:]*)?:(.*)$/i);
+    if (urlMatch) {
+      url = unescapeICSText(urlMatch[1]);
       return;
     }
     const dtstartMatch = line.match(/^DTSTART(?:;[^:]*)?:(.*)$/i);
@@ -130,6 +139,7 @@ function buildSyncedAssessment(event: ParsedCalendarEvent, idx: number): Assessm
     totalPrepTimeMinutes: 60,
     studySessionPacing: '25m Pomodoro',
     targetStudyDays: [],
+    attachmentUrl: event.attachmentUrl,
   };
 }
 

@@ -108,6 +108,8 @@ export interface Assessment {
   /** Optional "pick N of M" checklist for a consolidated task (e.g. Biology's weekly A&B activity). */
   checklist?: ChecklistOption[];
   checklistPickLimit?: number;
+  /** A downloadable Canvas document/worksheet link discovered during import, if any. */
+  attachmentUrl?: string;
 }
 
 export interface StudySessionLog {

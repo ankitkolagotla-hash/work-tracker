@@ -5,7 +5,7 @@ import { REGISTERED_COURSES } from '../types/assessment';
 import { SmartIntakeDrawer } from './SmartIntakeDrawer';
 import { ChecklistDrawer } from './ChecklistDrawer';
 import { CourseReassignSelect } from './CourseReassignSelect';
-import { CheckCircle2, Circle, PlayCircle, ChevronDown, ListChecks } from 'lucide-react';
+import { CheckCircle2, Circle, PlayCircle, ChevronDown, ListChecks, FileText, ExternalLink } from 'lucide-react';
 
 /** Course-organized "Work by Class" dashboard — the primary execution surface. */
 export const WorkByClassView: React.FC = () => {
@@ -77,6 +77,17 @@ export const WorkByClassView: React.FC = () => {
                             </button>
                           )}
                         </div>
+                        {a.attachmentUrl && (
+                          <a
+                            href={a.attachmentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full border border-cf-border bg-cf-card text-[10px] font-semibold text-cf-accent hover:border-cf-accent transition"
+                          >
+                            <FileText className="w-2.5 h-2.5" /> Open Attached Canvas Document <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
                       </div>
                       <CourseReassignSelect assessmentId={a.id} courseId={a.courseId} />
                       <button

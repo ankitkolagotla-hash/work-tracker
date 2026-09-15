@@ -35,6 +35,7 @@ export const DashboardPasteModal: React.FC<{ isOpen: boolean; onClose: () => voi
       totalPrepTimeMinutes: 60,
       studySessionPacing: '25m Pomodoro',
       targetStudyDays: [],
+      attachmentUrl: item.attachmentUrl,
     }));
     importCanvasEvents(events);
     setRawText('');
